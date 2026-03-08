@@ -1,24 +1,27 @@
-# Copilot Instructions
+# Copilot Instructions for synman/github-rules
 
-This file wires the rules stored in this repository into GitHub Copilot.
+This repository is the authoritative source for Copilot behavioral rules across all workspace projects.
 
-## How rules are structured
+## Structure
 
-- **[`GLOBAL.md`](../GLOBAL.md)** — baseline rules that apply to every repository.
-- **[`repos/<repo-name>.md`](../repos/)** — overrides and additions for a specific repository.  When a repo-specific rule conflicts with a global rule, the repo-specific rule takes precedence.
+- **[`global/copilot-instructions.md`](../global/copilot-instructions.md)** — universal rules that apply to every repository and session.
+- **[`projects/<repo-name>/copilot-instructions.md`](../projects/)** — per-project extensions and overrides. Repo-specific rules take precedence over global rules when they conflict.
 
-## Rules that always apply (from GLOBAL.md)
+## Projects tracked
 
-1. **Confirm target repo and branch** before opening any pull request.
-2. **Answer non-code questions directly** in chat — do not open a PR to document an answer.
-3. **Never commit secrets** (API keys, tokens, passwords).  If a secret is exposed, rotate it immediately.
-4. **Clarify intent** before performing any write action (push, PR creation, branch deletion, force push).
-5. **Mobile-first** when changes touch UI or UX surfaces.
+| Project | Rules file |
+|---------|-----------|
+| bambu-printer-app | [`projects/bambu-printer-app/copilot-instructions.md`](../projects/bambu-printer-app/copilot-instructions.md) |
+| bambu-printer-manager | [`projects/bambu-printer-manager/copilot-instructions.md`](../projects/bambu-printer-manager/copilot-instructions.md) |
+| bambu-mcp | [`projects/bambu-mcp/copilot-instructions.md`](../projects/bambu-mcp/copilot-instructions.md) |
+| bambu-fw-fetch | [`projects/bambu-fw-fetch/copilot-instructions.md`](../projects/bambu-fw-fetch/copilot-instructions.md) |
+| bambu-mqtt | [`projects/bambu-mqtt/copilot-instructions.md`](../projects/bambu-mqtt/copilot-instructions.md) |
+| webcamd | [`projects/webcamd/copilot-instructions.md`](../projects/webcamd/copilot-instructions.md) |
 
-## Rules specific to this repository (synman/github-rules)
+## Rules for this repository
 
-See [`repos/github-rules.md`](../repos/github-rules.md).
-
-## Keeping instructions up to date
-
-Whenever `GLOBAL.md` or any file under `repos/` is changed, update the summary above if the change affects the instructions Copilot should follow.
+- This repo is **documentation-only**. No code, no build artifacts.
+- Changes to `global/copilot-instructions.md` must also be applied to `~/.copilot/copilot-instructions.md` on the local machine (the live rules file).
+- Changes to `projects/<repo>/copilot-instructions.md` must also be applied to `~/<repo>/.github/copilot-instructions.md` on the local machine.
+- Keep rule files concise and actionable. Avoid prose that could be expressed as a bullet or table.
+- All changes via pull request — no direct pushes to `main`.

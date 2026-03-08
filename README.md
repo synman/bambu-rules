@@ -1,5 +1,52 @@
 # github-rules
 
+Authoritative source for Copilot behavioral rules across all workspace projects.
+
+## Structure
+
+```
+github-rules/
+├── .github/
+│   └── copilot-instructions.md         # Copilot hook for this repo itself
+├── global/
+│   └── copilot-instructions.md         # Universal rules — all repos, all sessions
+└── projects/
+    ├── bambu-printer-app/
+    │   └── copilot-instructions.md
+    ├── bambu-printer-manager/
+    │   └── copilot-instructions.md
+    ├── bambu-mcp/
+    │   └── copilot-instructions.md
+    ├── bambu-fw-fetch/
+    │   └── copilot-instructions.md
+    ├── bambu-mqtt/
+    │   └── copilot-instructions.md
+    └── webcamd/
+        └── copilot-instructions.md
+```
+
+## Precedence
+
+Repo-specific rules in `projects/<repo>/` extend and override global rules. All non-conflicting global rules remain in effect.
+
+## Local sync
+
+The live rules files on the local machine are:
+
+| Source (this repo) | Local path |
+|--------------------|-----------|
+| `global/copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
+| `projects/<repo>/copilot-instructions.md` | `~/<repo>/.github/copilot-instructions.md` |
+
+Changes in this repo must be manually synced to local paths (or vice versa) to take effect in active sessions.
+
+## Adding a new project
+
+1. Create `projects/<repo-name>/copilot-instructions.md` with the project-specific rules.
+2. Copy it to `~/<repo-name>/.github/copilot-instructions.md` on the local machine.
+3. Add the project to the table in `.github/copilot-instructions.md`.
+4. Open a pull request against `main`.
+
 A central place to store global rules and per-repo overrides for Copilot and other coding assistants.
 
 ## Purpose
