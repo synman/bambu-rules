@@ -4,6 +4,8 @@
 
 Snapshots of this file and associated checkpoints are stored in `~/.copilot/baselines/` **and mirrored to `https://github.com/synman/bambu-rules`** (under `baselines/`). The GitHub mirror is the authoritative remote backup — baselines can be restored from either source.
 
+**Baseline immutability guard (absolute, no exceptions):** Baseline snapshot files may be marked immutable (`chflags uchg`) after capture. The agent and any subagent spawned via the `task` tool MUST NEVER run `chflags nouchg` (or any equivalent — `chmod`, `chattr -i`, `sudo chflags`, or any other mechanism that removes the immutable flag) on any baseline file without the user providing **explicit written consent in the current conversation turn**. This applies even if a subsequent baseline capture or sync operation would overwrite the file. If an operation is blocked because a file is immutable, stop — report which file is protected and ask the user to authorize removal of the flag before proceeding. Do not work around the protection by any means. When spawning any subagent for tasks that touch `~/.copilot/baselines/`, include this prohibition verbatim in the subagent prompt.
+
 To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
 
 **Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
