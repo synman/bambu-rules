@@ -2,11 +2,28 @@
 
 ## Baselines
 
-Snapshots of this file and associated checkpoints are stored in `~/.copilot/baselines/`. To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
+Snapshots of this file and associated checkpoints are stored in `~/.copilot/baselines/` **and mirrored to `https://github.com/synman/github-rules`** (under `baselines/`). The GitHub mirror is the authoritative remote backup — baselines can be restored from either source.
 
-**Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline, check every workspace repo for uncommitted changes (`git status --short`). If any exist, commit them with a meaningful message first. A baseline that captures dirty working trees is invalid — it cannot be used to reliably restore state.
+To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
+
+**Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
+1. Check every workspace repo for uncommitted changes (`git status --short`). If any exist, commit them first. A baseline that captures dirty working trees is invalid.
+2. Ensure all workspace repos are pushed (`git status --branch` shows no `ahead`). A baseline whose SHAs are not on the remote cannot be restored from the remote.
+3. Capture baseline files, update the Known Baselines table below, then **sync to github-rules in the same turn** (see `github-rules remote repository` section under Rules File Maintenance).
 
 ```bash
+# --- CAPTURE a new baseline ---
+NAME="<baseline-name>"
+cp ~/.copilot/copilot-instructions.md ~/.copilot/baselines/copilot-instructions.${NAME}.md
+cp ~/bambu-printer-manager/.github/copilot-instructions.md ~/.copilot/baselines/${NAME}.bambu-printer-manager.copilot-instructions.md
+cp ~/bambu-printer-app/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-printer-app.copilot-instructions.md
+cp ~/bambu-mcp/.github/copilot-instructions.md             ~/.copilot/baselines/${NAME}.bambu-mcp.copilot-instructions.md
+cp ~/bambu-fw-fetch/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.bambu-fw-fetch.copilot-instructions.md
+cp ~/GitHub/bambu-mqtt/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-mqtt.copilot-instructions.md
+cp ~/GitHub/webcamd/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.webcamd.copilot-instructions.md
+# Then update Known Baselines table below, and sync to github-rules.
+
+# --- RESTORE from local baselines ---
 # 1. Restore rules file
 cp ~/.copilot/baselines/copilot-instructions.<baseline-name>.md ~/.copilot/copilot-instructions.md
 
@@ -25,6 +42,13 @@ git -C ~/bambu-mcp                reset --hard <sha>
 git -C ~/bambu-fw-fetch           reset --hard <sha>
 git -C ~/GitHub/bambu-mqtt        reset --hard <sha>
 git -C ~/GitHub/webcamd           reset --hard <sha>
+
+# --- RESTORE from github-rules remote (if local baselines/ is unavailable) ---
+cd ~/GitHub/github-rules && git pull
+cp ~/GitHub/github-rules/baselines/copilot-instructions.<baseline-name>.md ~/.copilot/copilot-instructions.md
+cp ~/GitHub/github-rules/baselines/<baseline-name>.bambu-printer-manager.copilot-instructions.md ~/bambu-printer-manager/.github/copilot-instructions.md
+# ... (same pattern for all 6 repos)
+# Then reset workspace repos as above.
 ```
 
 **Known baselines:**
