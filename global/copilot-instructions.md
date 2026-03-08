@@ -213,6 +213,45 @@ If a rule currently exists in both global and a project file and they are identi
 - If updating a project file rule, check whether the change should actually be promoted to global.
 - Never leave the files in a state where a project file rule contradicts the global file.
 
+### github-rules remote repository (Mandatory sync)
+
+`https://github.com/synman/github-rules` is the authoritative remote backup for all rules files and baselines. Its structure mirrors the local layout:
+
+| github-rules path | Local source |
+|-------------------|-------------|
+| `global/copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
+| `projects/<repo>/copilot-instructions.md` | `~/<repo>/.github/copilot-instructions.md` |
+| `baselines/` | `~/.copilot/baselines/` |
+| `.github/copilot-instructions.md` | Self-referential Copilot hook for github-rules itself |
+
+**Sync is mandatory after any of the following events:**
+
+| Event | What to sync |
+|-------|-------------|
+| Global rules file edited | `global/copilot-instructions.md` |
+| Any project rules file edited | `projects/<repo>/copilot-instructions.md` |
+| New baseline created | All new files under `baselines/` |
+| Existing baseline updated | The changed baseline file(s) under `baselines/` |
+
+**Sync procedure:**
+```bash
+# Copy changed file(s) to github-rules
+cp ~/.copilot/copilot-instructions.md ~/GitHub/github-rules/global/copilot-instructions.md
+cp ~/<repo>/.github/copilot-instructions.md ~/GitHub/github-rules/projects/<repo>/copilot-instructions.md
+cp ~/.copilot/baselines/*.md ~/GitHub/github-rules/baselines/
+
+# Commit and push
+cd ~/GitHub/github-rules
+git add -A
+git commit -m "sync: <brief description of what changed>"
+git push
+```
+
+**Hard requirements:**
+- Never edit files directly in `~/GitHub/github-rules/` as the primary edit. The live files (local paths above) are always the source of truth. github-rules is a mirror.
+- After creating a baseline, sync both the new baseline files AND the updated global rules file (which contains the new baseline entry) in a single commit.
+- Do not defer sync to "later" — sync in the same turn the rule or baseline is created/modified.
+
 ---
 
 ## Session Start Protocol + RULES_PRECHECK (Mandatory)
