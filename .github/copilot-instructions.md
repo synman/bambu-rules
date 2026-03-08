@@ -1,4 +1,4 @@
-# Copilot Instructions for synman/github-rules
+# Copilot Instructions for synman/bambu-rules
 
 This repository is the authoritative source for Copilot behavioral rules across all workspace projects.
 

@@ -2,14 +2,14 @@
 
 ## Baselines
 
-Snapshots of this file and associated checkpoints are stored in `~/.copilot/baselines/` **and mirrored to `https://github.com/synman/github-rules`** (under `baselines/`). The GitHub mirror is the authoritative remote backup — baselines can be restored from either source.
+Snapshots of this file and associated checkpoints are stored in `~/.copilot/baselines/` **and mirrored to `https://github.com/synman/bambu-rules`** (under `baselines/`). The GitHub mirror is the authoritative remote backup — baselines can be restored from either source.
 
 To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
 
 **Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
 1. Check every workspace repo for uncommitted changes (`git status --short`). If any exist, commit them first. A baseline that captures dirty working trees is invalid.
 2. Ensure all workspace repos are pushed (`git status --branch` shows no `ahead`). A baseline whose SHAs are not on the remote cannot be restored from the remote.
-3. Capture baseline files, update the Known Baselines table below, then **sync to github-rules in the same turn** (see `github-rules remote repository` section under Rules File Maintenance).
+3. Capture baseline files, update the Known Baselines table below, then **sync to bambu-rules in the same turn** (see `bambu-rules remote repository` section under Rules File Maintenance).
 
 ```bash
 # --- CAPTURE a new baseline ---
@@ -21,7 +21,7 @@ cp ~/bambu-mcp/.github/copilot-instructions.md             ~/.copilot/baselines/
 cp ~/bambu-fw-fetch/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.bambu-fw-fetch.copilot-instructions.md
 cp ~/GitHub/bambu-mqtt/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-mqtt.copilot-instructions.md
 cp ~/GitHub/webcamd/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.webcamd.copilot-instructions.md
-# Then update Known Baselines table below, and sync to github-rules.
+# Then update Known Baselines table below, and sync to bambu-rules.
 
 # --- RESTORE from local baselines ---
 # 1. Restore rules file
@@ -43,10 +43,10 @@ git -C ~/bambu-fw-fetch           reset --hard <sha>
 git -C ~/GitHub/bambu-mqtt        reset --hard <sha>
 git -C ~/GitHub/webcamd           reset --hard <sha>
 
-# --- RESTORE from github-rules remote (if local baselines/ is unavailable) ---
-cd ~/GitHub/github-rules && git pull
-cp ~/GitHub/github-rules/baselines/copilot-instructions.<baseline-name>.md ~/.copilot/copilot-instructions.md
-cp ~/GitHub/github-rules/baselines/<baseline-name>.bambu-printer-manager.copilot-instructions.md ~/bambu-printer-manager/.github/copilot-instructions.md
+# --- RESTORE from bambu-rules remote (if local baselines/ is unavailable) ---
+cd ~/GitHub/bambu-rules && git pull
+cp ~/GitHub/bambu-rules/baselines/copilot-instructions.<baseline-name>.md ~/.copilot/copilot-instructions.md
+cp ~/GitHub/bambu-rules/baselines/<baseline-name>.bambu-printer-manager.copilot-instructions.md ~/bambu-printer-manager/.github/copilot-instructions.md
 # ... (same pattern for all 6 repos)
 # Then reset workspace repos as above.
 ```
@@ -59,8 +59,8 @@ cp ~/GitHub/github-rules/baselines/<baseline-name>.bambu-printer-manager.copilot
 | `2026-03-08-full-snapshot` | 2026-03-08 | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
 | `2026-03-08-current-state` | 2026-03-08 | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
 | `2026-03-08-clean` | 2026-03-08 | All 6 repos clean; bpa filament catalog API commit included |
-| `2026-03-08-post-audit-stream` | 2026-03-08 | Full post-audit complete; view_stream tab targeting + RTSPS freeze recovery; github-rules PR merged; all 6 repos clean |
-| `2026-03-08-rules-hardened` | 2026-03-08 | github-rules maintenance rules + baseline restore paradox + sync obligation suspension; rules treated as code; all 7 rules files + 6 repos in sync |
+| `2026-03-08-post-audit-stream` | 2026-03-08 | Full post-audit complete; view_stream tab targeting + RTSPS freeze recovery; bambu-rules PR merged; all 6 repos clean |
+| `2026-03-08-rules-hardened` | 2026-03-08 | bambu-rules maintenance rules + baseline restore paradox + sync obligation suspension; rules treated as code; all 7 rules files + 6 repos in sync |
 
 **`2026-03-08-whitelist-baseline` — repo SHAs:**
 | Repo | Branch | SHA |
@@ -206,7 +206,7 @@ Rules files are code. They are subject to the same versioning, baselining, diffi
 - A change to any rules file is a change that must be treated with the same deliberateness as a code change: verified, intentional, and captured.
 - Baselines must reflect the current state of **both** code SHAs and rules files. A baseline whose rules snapshot lags behind the live rules files is incomplete — it cannot fully restore the environment.
 - When assessing whether a delta warrants a new baseline, rules file changes count equally to code commits. A session that only changed rules files but no code repos still has a meaningful delta.
-- Rules files are synced to `github-rules` as their remote repository, serving the same role that `origin` serves for code repos.
+- Rules files are synced to `bambu-rules` as their remote repository, serving the same role that `origin` serves for code repos.
 - The `Post-Audit Rules Update Obligation` applies here: any behavioral gap or new pattern discovered during work must be written into the rules files before the work is considered complete — for the same reason code bugs are fixed before closing a ticket.
 
 ## Rules File Maintenance (Mandatory)
@@ -259,16 +259,16 @@ If a rule currently exists in both global and a project file and they are identi
 - If updating a project file rule, check whether the change should actually be promoted to global.
 - Never leave the files in a state where a project file rule contradicts the global file.
 
-### github-rules remote repository (Mandatory sync)
+### bambu-rules remote repository (Mandatory sync)
 
-`https://github.com/synman/github-rules` is the authoritative remote backup for all rules files and baselines. Its structure mirrors the local layout:
+`https://github.com/synman/bambu-rules` is the authoritative remote backup for all rules files and baselines. Its structure mirrors the local layout:
 
-| github-rules path | Local source |
+| bambu-rules path | Local source |
 |-------------------|-------------|
 | `global/copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
 | `projects/<repo>/copilot-instructions.md` | `~/<repo>/.github/copilot-instructions.md` |
 | `baselines/` | `~/.copilot/baselines/` |
-| `.github/copilot-instructions.md` | Self-referential Copilot hook for github-rules itself |
+| `.github/copilot-instructions.md` | Self-referential Copilot hook for bambu-rules itself |
 
 **Sync is mandatory after any of the following events:**
 
@@ -281,36 +281,36 @@ If a rule currently exists in both global and a project file and they are identi
 
 **Sync procedure:**
 ```bash
-# Copy changed file(s) to github-rules
-cp ~/.copilot/copilot-instructions.md ~/GitHub/github-rules/global/copilot-instructions.md
-cp ~/<repo>/.github/copilot-instructions.md ~/GitHub/github-rules/projects/<repo>/copilot-instructions.md
-cp ~/.copilot/baselines/*.md ~/GitHub/github-rules/baselines/
+# Copy changed file(s) to bambu-rules
+cp ~/.copilot/copilot-instructions.md ~/GitHub/bambu-rules/global/copilot-instructions.md
+cp ~/<repo>/.github/copilot-instructions.md ~/GitHub/bambu-rules/projects/<repo>/copilot-instructions.md
+cp ~/.copilot/baselines/*.md ~/GitHub/bambu-rules/baselines/
 
 # Commit and push
-cd ~/GitHub/github-rules
+cd ~/GitHub/bambu-rules
 git add -A
 git commit -m "sync: <brief description of what changed>"
 git push
 ```
 
 **Hard requirements:**
-- Never edit files directly in `~/GitHub/github-rules/` as the primary edit. The live files (local paths above) are always the source of truth. github-rules is a mirror.
+- Never edit files directly in `~/GitHub/bambu-rules/` as the primary edit. The live files (local paths above) are always the source of truth. bambu-rules is a mirror.
 - After creating a baseline, sync both the new baseline files AND the updated global rules file (which contains the new baseline entry) in a single commit.
 - Do not defer sync to "later" — sync in the same turn the rule or baseline is created/modified.
 
 **Baseline restore paradox (mandatory awareness):**
 
-Restoring a baseline copies old rules files back into the individual project repos (e.g., `~/bambu-mcp/.github/copilot-instructions.md`). Those files now differ from what is in `github-rules/projects/`. The normal sync obligation — "any project rules file edited → sync to github-rules" — would fire and overwrite github-rules with the rolled-back content.
+Restoring a baseline copies old rules files back into the individual project repos (e.g., `~/bambu-mcp/.github/copilot-instructions.md`). Those files now differ from what is in `bambu-rules/projects/`. The normal sync obligation — "any project rules file edited → sync to bambu-rules" — would fire and overwrite bambu-rules with the rolled-back content.
 
 This is not always wrong, but it is not always right either. The correct behavior depends on intent:
 
-| Restore intent | github-rules action |
+| Restore intent | bambu-rules action |
 |---------------|-------------------|
-| Full rollback — you want the workspace AND github-rules to reflect the baseline state | Sync github-rules after restore (overwrite with restored content) |
-| Partial rollback — you are reverting rules temporarily to investigate, not as permanent state | Do NOT sync github-rules; it should remain at the current (pre-restore) state |
-| Disaster recovery — local files lost, restoring from github-rules itself | github-rules is already correct; no sync needed after restore |
+| Full rollback — you want the workspace AND bambu-rules to reflect the baseline state | Sync bambu-rules after restore (overwrite with restored content) |
+| Partial rollback — you are reverting rules temporarily to investigate, not as permanent state | Do NOT sync bambu-rules; it should remain at the current (pre-restore) state |
+| Disaster recovery — local files lost, restoring from bambu-rules itself | bambu-rules is already correct; no sync needed after restore |
 
-**Hard requirement:** After any baseline restore that writes rules files into project repos, explicitly decide which case applies and state it before touching github-rules. The sync obligation is **suspended during a restore** until intent is confirmed. Never auto-sync github-rules immediately after a restore without deliberate confirmation.
+**Hard requirement:** After any baseline restore that writes rules files into project repos, explicitly decide which case applies and state it before touching bambu-rules. The sync obligation is **suspended during a restore** until intent is confirmed. Never auto-sync bambu-rules immediately after a restore without deliberate confirmation.
 
 ---
 

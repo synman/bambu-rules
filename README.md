@@ -1,4 +1,4 @@
-# github-rules
+# bambu-rules
 
 This repository is the **authoritative remote backup** for all Copilot behavioral rules and workspace baselines. It serves as the `origin` for rules files in the same way that a git remote serves as the origin for source code.
 
@@ -14,7 +14,7 @@ This repo provides:
 ## Structure
 
 ```
-github-rules/
+bambu-rules/
 ├── .github/
 │   └── copilot-instructions.md         # Copilot hook for this repo itself
 ├── global/
@@ -62,7 +62,7 @@ Baselines enable full environment restore — rules state and code state togethe
 
 **Restoring from this repo** (if local `~/.copilot/baselines/` is unavailable):
 ```bash
-cd ~/GitHub/github-rules && git pull
+cd ~/GitHub/bambu-rules && git pull
 cp baselines/copilot-instructions.<name>.md ~/.copilot/copilot-instructions.md
 cp baselines/<name>.bambu-printer-app.copilot-instructions.md ~/bambu-printer-app/.github/copilot-instructions.md
 # ... repeat for all 6 project repos
