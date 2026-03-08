@@ -13,10 +13,13 @@ This repository provides a single source of truth for behavioral guidelines that
 
 ```
 github-rules/
+├── .github/
+│   └── copilot-instructions.md      # Wires rules into GitHub Copilot for this repo
 ├── GLOBAL.md                        # Global rules for all repos
 └── repos/
     ├── _template.md                 # Template for new repo rule files
-    └── bambu-printer-manager.md     # Rules specific to synman/bambu-printer-manager
+    ├── bambu-printer-manager.md     # Rules specific to synman/bambu-printer-manager
+    └── github-rules.md              # Rules specific to synman/github-rules (this repo)
 ```
 
 ## Precedence
