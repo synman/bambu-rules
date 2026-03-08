@@ -35,6 +35,7 @@ git -C ~/GitHub/webcamd           reset --hard <sha>
 | `2026-03-08-full-snapshot` | 2026-03-08 | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
 | `2026-03-08-current-state` | 2026-03-08 | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
 | `2026-03-08-clean` | 2026-03-08 | All 6 repos clean; bpa filament catalog API commit included |
+| `2026-03-08-post-audit-stream` | 2026-03-08 | Full post-audit complete; view_stream tab targeting + RTSPS freeze recovery; github-rules PR merged; all 6 repos clean |
 
 **`2026-03-08-whitelist-baseline` — repo SHAs:**
 | Repo | Branch | SHA |
@@ -93,6 +94,16 @@ The corresponding checkpoint (session history, findings, decisions) is at:
 | `~/bambu-printer-manager` | `devel` | `0dbf71dad8c2159e4fe37fa8da4b8e68f184959c` |
 | `~/bambu-printer-app` | `main` | `7b33b64c8246a897ac867b91ca525a1642977ee9` |
 | `~/bambu-mcp` | `main` | `4fb9819d4ba45fc94cf4f50504292fcd90c5b644` |
+| `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
+| `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
+| `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
+
+**`2026-03-08-post-audit-stream` — repo SHAs:**
+| Repo | Branch | SHA |
+|------|--------|-----|
+| `~/bambu-printer-manager` | `devel` | `b69763466662d8d04a63a65f429bdf761a18417a` |
+| `~/bambu-printer-app` | `main` | `7b33b64c8246a897ac867b91ca525a1642977ee9` |
+| `~/bambu-mcp` | `main` | `e34edfd38ec5768959d052d934c64aa00482106d` |
 | `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
 | `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
 | `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
