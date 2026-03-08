@@ -276,6 +276,20 @@ git push
 - After creating a baseline, sync both the new baseline files AND the updated global rules file (which contains the new baseline entry) in a single commit.
 - Do not defer sync to "later" — sync in the same turn the rule or baseline is created/modified.
 
+**Baseline restore paradox (mandatory awareness):**
+
+Restoring a baseline copies old rules files back into the individual project repos (e.g., `~/bambu-mcp/.github/copilot-instructions.md`). Those files now differ from what is in `github-rules/projects/`. The normal sync obligation — "any project rules file edited → sync to github-rules" — would fire and overwrite github-rules with the rolled-back content.
+
+This is not always wrong, but it is not always right either. The correct behavior depends on intent:
+
+| Restore intent | github-rules action |
+|---------------|-------------------|
+| Full rollback — you want the workspace AND github-rules to reflect the baseline state | Sync github-rules after restore (overwrite with restored content) |
+| Partial rollback — you are reverting rules temporarily to investigate, not as permanent state | Do NOT sync github-rules; it should remain at the current (pre-restore) state |
+| Disaster recovery — local files lost, restoring from github-rules itself | github-rules is already correct; no sync needed after restore |
+
+**Hard requirement:** After any baseline restore that writes rules files into project repos, explicitly decide which case applies and state it before touching github-rules. The sync obligation is **suspended during a restore** until intent is confirmed. Never auto-sync github-rules immediately after a restore without deliberate confirmation.
+
 ---
 
 ## Session Start Protocol + RULES_PRECHECK (Mandatory)
