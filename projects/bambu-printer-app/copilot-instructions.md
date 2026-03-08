@@ -28,23 +28,10 @@ See global rules (`~/.copilot/copilot-instructions.md`). Key: `secrets.py get bp
 
 ## Session Start Protocol (Mandatory)
 
-At the start of every task, **both** the global rules file and this repo-specific file MUST be read and applied together before any tool call related to the task.
-
-**Hard requirements:**
-- Read `~/.copilot/copilot-instructions.md` (global rules) — always in effect for every session, every repo.
-- Read `.github/copilot-instructions.md` in the repo root — repo-specific rules extend or override global rules but do NOT replace them.
-- Both files must be synergized: all rules from both are simultaneously active.
-- Failure to read either file is a rules violation. "I only read the repo file" and "I only read the global file" are both violations.
-
-**Failure mode to avoid**: Applying repo rules without global rules, or global rules without repo rules. Both are required. Always.
-
-### Mandatory Preflight Enforcement (No Exceptions)
-
-- **Mandatory Preflight Evidence**: Before any non-read action, the agent must first output a `RULES_PRECHECK` line that names both files read.
-- **Fail-Closed**: If either rules file is unreadable or not read in this turn, the agent must stop and perform no further actions.
-- **Invalidation Rule**: Any task action before `RULES_PRECHECK` is automatically invalid and must be re-run from the start.
-- **No Memory Substitution**: Prior-session memory of rules does not satisfy this requirement; each new task requires a fresh read.
-- **Auditability**: The first actionable step in every task must be the precheck; absence is a compliance failure.
+Both the global rules file and this repo-specific file MUST be read together before any tool call.
+See **Session Start Protocol + RULES_PRECHECK** in `~/.copilot/copilot-instructions.md` for the
+full enforcement gate, `RULES_PRECHECK` output format, and invalidation rules — they apply here
+without exception.
 
 ## Root Cause Fix Rule (Mandatory)
 
