@@ -198,6 +198,17 @@ curl -sk -H "Authorization: Basic $AUTH" "https://bambu-h2d.shellware.com/api/pr
 - Never duplicate a global rule into a project file.
 - Never edit a project file for a universal rule — it belongs in the global file.
 
+## Rules as Code (Mandatory)
+
+Rules files are code. They are subject to the same versioning, baselining, diffing, and delta assessment rigor as source code in any tracked repository.
+
+**Hard requirements:**
+- A change to any rules file is a change that must be treated with the same deliberateness as a code change: verified, intentional, and captured.
+- Baselines must reflect the current state of **both** code SHAs and rules files. A baseline whose rules snapshot lags behind the live rules files is incomplete — it cannot fully restore the environment.
+- When assessing whether a delta warrants a new baseline, rules file changes count equally to code commits. A session that only changed rules files but no code repos still has a meaningful delta.
+- Rules files are synced to `github-rules` as their remote repository, serving the same role that `origin` serves for code repos.
+- The `Post-Audit Rules Update Obligation` applies here: any behavioral gap or new pattern discovered during work must be written into the rules files before the work is considered complete — for the same reason code bugs are fixed before closing a ticket.
+
 ## Rules File Maintenance (Mandatory)
 
 This section governs how the rules files themselves are maintained. Read it before adding, editing, or restructuring any rules file.
