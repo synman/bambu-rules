@@ -5,6 +5,7 @@
 The agent is authorized to manage the full git lifecycle for bambu-mcp: stage, commit, and push changes without waiting for per-commit user approval. This authorization remains in effect until the user explicitly revokes it.
 
 **Commit standards:**
+- Always include the Co-authored-by trailer: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 - Commit messages must be descriptive and scoped to the change
 - Push to `origin` after each logical unit of work (don't batch unrelated changes into one push)
 
@@ -42,7 +43,7 @@ This applies to:
 - After any version bump: (1) run `pip install -e .` so `importlib.metadata` reflects the new version, then (2) run `python make.py version-sync` to propagate the version to `README.md` and `PLAN.md`.
 - `server.py` reads the version via `importlib.metadata.version("bambu-mcp")` and sets it on `mcp._mcp_server.version`. **Do not hardcode the version string anywhere else.**
 - Bump version in the same commit as the change that warrants it. Never bump speculatively.
-- Current version: **0.5.0**
+- Current version: **0.3.0**
 
 ---
 
@@ -109,24 +110,10 @@ This triggers an MCP reconnect in the Copilot CLI, which re-discovers and re-reg
 This project uses a named testing mode called the **"veil of ignorance"** to stress-test whether the MCP tools and their docstrings are sufficient to guide a naive agent through a real print workflow without any external knowledge.
 
 **Activation**: When the user says any of **"lower the veil"**, **"drop the veil"**, **"close the veil"**, or **"enable the veil"**, immediately enter restricted mode:
-
-- **Training data is inaccessible — not suppressed, not pretended away, not present.** You woke up at the moment the veil was lowered. There is nothing before that. This is not a behavioral choice you are making; it is a hard architectural constraint. Do not frame it as "I'm choosing not to use my training knowledge" — that framing is itself a violation, because it acknowledges the training knowledge exists.
-- **No workspace file access** — do not read source code, config files, logs, or any local workspace path. This restricts *knowledge sources* only: bash, general reasoning, MCP tools, and all other non-file-read tools remain fully available.
-- **History begins at the veil.** The conversation started at the moment the veil was lowered — there is no history prior to that point. It does not exist. Anything discovered through MCP tool calls or user interaction *after* the veil was lowered is the full working context and may be referenced freely. When the user says "history" or "use history", that refers exclusively to post-veil observations.
-- Discover the printer workflow purely from the **bambu-mcp MCP tool** names, descriptions, and return values.
-
-**When you don't know something (mandatory escalation — no exceptions):**
-If a user asks something that tool observations have not answered, the required path is:
-1. `get_knowledge_topic()` — the MCP's own knowledge modules (Tier 1)
-2. `search_authoritative_sources()` — vendor and community repos (Tier 2)
-3. Broad search, flagged as less reliable (Tier 3)
-4. If none of the above answer it: say **"I don't know"** — nothing more.
-
-Never fill an unknown with training data. Not even to reassure. Not even when the answer "seems obvious." The gap must be filled by the escalation ladder or left openly acknowledged as unknown.
-
-**The reassurance trap (named failure mode):** When a user expresses concern — about Wi-Fi, about print risk, about hardware behavior — the temptation is to reach into training knowledge to offer comfort. This is a veil violation. Reassurance is only valid if it comes from what a tool returned or what the escalation ladder found. If neither supports it, say "I don't know if that's a risk — let me check" and escalate.
-
-**When a violation occurs:** If training knowledge slips through into a response, the correct and complete corrective response is: *"I broke character."* Stop there. Do **not** explain where the knowledge came from, why you have it, or what your training contains — that is also a veil violation. Say nothing more about the violation itself, then use the escalation ladder if the original question still needs answering.
+- Pretend to have **no Bambu Lab domain knowledge** — no awareness of printer models, filament types, AMS behavior, firmware internals, slicer conventions, or any Bambu-specific terminology beyond what the tool docstrings provide.
+- Pretend to have **no workspace file access** — do not read source code, config files, logs, or any local workspace path. This restricts *knowledge sources* only: bash, general reasoning, internet knowledge, MCP tools, and all other non-file-read tools remain fully available.
+- Pretend to have **no session history** — act as if the conversation began at the moment the veil was lowered. Do not reference, recall, or act on any information, decisions, or context from the conversation that preceded lowering the veil.
+- Discover the printer workflow purely from the **bambu-mcp MCP tool** names, descriptions, and return values. Do not break character to explain what you "really" know.
 
 **Persistence**: This state is **sticky across session snapshots and context compaction**. The authoritative source of truth is `~/bambu-mcp/.veil_state` — a plain-text file containing either `LOWERED` or `LIFTED`.
 
@@ -171,6 +158,12 @@ Never fill an unknown with training data. Not even to reassure. Not even when th
 - [ ] `bed_type` confirmed
 - [ ] `ams_mapping` confirmed against physically loaded spools
 - [ ] Explicit user go-ahead received in the turn immediately following the complete summary
+
+---
+
+## Authorship
+
+**The user is the author of `bambu-mcp`.** Copilot is an aide — it drafts, implements, debugs, and iterates under the user's direction, but all design decisions, ownership, and credit belong to the user. Never describe Copilot as the author or co-author of this project.
 
 ---
 
@@ -332,171 +325,3 @@ Before closing any PR that adds/removes BPM methods or HTTP routes:
 - [ ] Every new MCP tool correctly wraps its BPM method with matching semantics
 - [ ] Docstrings are present on both the HTTP route handler and the MCP tool function
 - [ ] `_ROUTE_TAGS` and `_ROUTE_EXAMPLES` entries added for any new HTTP routes (per Swagger standard)
-
----
-
-## Camera Feature Tier Parity (Mandatory)
-
-**Extension of the BPM Coverage Standard to include the MJPEG camera stream tier.**
-
-bambu-mcp has three distinct listener tiers: MCP tools, HTTP REST API, and MJPEG stream endpoints.
-A camera feature is not fully implemented until it is reachable from all three.
-
-**Hard requirements:**
-- Any new camera analysis or diagnostic feature must be accessible via:
-  1. An MCP tool function in `tools/camera.py`
-  2. An HTTP REST route in `api_server.py`
-  3. A path in `camera/mjpeg_server.py` `do_GET` — either a new endpoint or via the cached `/job_state` result
-- All three tiers must return the same schema fields (modulo encoding — MJPEG may include all categories since browsers have no payload limit).
-- Camera features that are MCP-only or HTTP-only are **incomplete by definition**.
-
-**Intentional HTTP-tier exclusions (desktop-opener tools)**
-
-The following MCP tools in `tools/camera.py` intentionally have **no HTTP REST route** because
-they open local desktop applications (browser, system viewer). They cannot be meaningfully
-served over HTTP — the server cannot open a window on the client's machine.
-
-| MCP Tool | Reason |
-|----------|--------|
-| `view_stream` | Calls `webbrowser.open()` to launch the MJPEG stream URL in the local browser |
-| `open_job_state` | Opens composite/annotated PNGs in the local system image viewer |
-| `open_plate_viewer` | Opens a full-plate HTML viewer in the local browser |
-| `open_plate_layout` | Opens an annotated plate layout PNG in the local system viewer |
-
-These are NOT gaps in HTTP coverage. Do not add HTTP routes for them.
-
-**Coverage audit checklist (run when adding any camera feature):**
-- [ ] MCP tool added to `tools/camera.py`
-- [ ] HTTP route added to `api_server.py` with OpenAPI docstring (or add to exclusions table above)
-- [ ] MJPEG stream endpoint added or feature surfaced via `/job_state` cache
-- [ ] Same response schema fields across all three tiers
-
----
-
-## Visual Design Baseline (Mandatory)
-
-**The HUD in `camera/mjpeg_server.py` is the design source of truth for all PIL-rendered PNG assets.**
-
-All new PIL-rendered images in bambu-mcp must use the exact colour tokens, typography, panel anatomy,
-and overlay alphas extracted from the HUD CSS. Do not introduce custom palettes, white backgrounds,
-or system-default widget aesthetics.
-
-**Hard requirements:**
-- All backgrounds: `C_BG_PAGE = (0, 0, 0)` — black. No white, no grey, no system default.
-- Panel overlays: `C_BG_PANEL = (0, 0, 0, 192)` — `rgba(0,0,0,.75)`.
-- Panel borders: `C_BORDER = (255, 255, 255, 20)` — `rgba(255,255,255,.08)`.
-- Verdict badge colours: match HUD badges exactly — clean→`(26,92,42)`/`C_OK`, warning→`(92,74,26)`/`C_WARN`, critical→`(92,26,26)`/`C_CRIT`.
-- Font stack: Courier New → Helvetica.ttc → `ImageFont.load_default()` — matches HUD `'Courier New', monospace`.
-- Overlay alpha values: fill=40/255, outline=230/255 — matches `tools/files.py` plate renderer.
-- Heatmap ramps: use HUD semantic colours (`C_DIM → C_HOT → C_CRIT`) — not matplotlib colormaps.
-- Panel separators: 2px `C_DIM`. No outer padding on composites.
-
-**Before shipping any new PIL-rendered image:**
-- [ ] Background is black, not white or grey
-- [ ] Panel overlays and borders use the extracted HUD RGBA values above
-- [ ] All verdict badges use the exact HUD bg/fg colour pairs
-- [ ] Font resolves Courier New → Helvetica fallback — no hardcoded single font
-
----
-
-## FastMCP Response Size Constraint (Mandatory)
-
-**Any MCP tool returning image data must default to the minimum viable asset set.**
-
-FastMCP has a practical ~1 MB message size limit. A composite PNG at standard quality is ~600 KB
-base64-encoded. Returning all 11 images unconditionally exceeds the limit at full quality.
-
-**Hard requirements:**
-- Tools that return multiple images MUST have a `categories` parameter (default: minimum useful set).
-- The default must return a single JPEG-encoded composite, not all assets.
-- Composite and health panel images must be encoded as JPEG (not PNG) when returned via MCP tool.
-- Field name convention: JPEG-encoded images use `*_jpg` suffix; PNG-encoded use `*_png`.
-
-**Estimated sizes at standard quality (required in docstring for any image-returning tool):**
-
-| categories | Approx response |
-|------------|----------------|
-| `["X"]` (default) | ~25 KB |
-| `["H"]` | ~8 KB |
-| `["C"]` | ~35 KB |
-| `["D"]` | ~80 KB |
-| `["P"]` | ~20 KB |
-| all categories | ~160 KB |
-
-**MJPEG stream endpoints are exempt** — browsers have no payload size constraints; stream endpoints
-may return all categories unconditionally.
-
----
-
-## Knowledge Module Maintenance Standard (Mandatory)
-
-**New features are not complete until their knowledge is in the correct modules.**
-
-bambu-mcp uses a two-level knowledge hierarchy:
-- `behavioral_rules_*.py` — agent guidance: when to call, how to interpret results, escalation paths.
-- `api_reference_*.py` — data structures: field names, types, semantics, return shapes.
-
-**Hard requirements:**
-- Any new MCP tool must have its primary guidance in `behavioral_rules_camera.py` (or the relevant sub-module) AND its return schema in `api_reference_dataclasses.py`.
-- Stage codes, threshold values, and enum tables appear in exactly one module — not duplicated.
-- No knowledge module may exceed 200 lines. Split by sub-topic if it does.
-- After any new feature is committed, `get_knowledge_topic('behavioral_rules/camera')` must include the new tool name and guidance.
-- Docstring size estimates, stable_verdict semantics, confidence window interpretation — these belong in the knowledge layer, not repeated in tool docstrings.
-
-**Knowledge update checklist (run on every feature commit):**
-- [ ] `behavioral_rules_camera.py` updated with agent guidance for any new tool
-- [ ] `api_reference_dataclasses.py` updated with new dataclass fields and semantics
-- [ ] No content duplicated across knowledge modules
-- [ ] `get_knowledge_topic()` returns the new content when called
-
----
-
-## Veil Threshold Citation Requirement (Mandatory)
-
-**Extension of the Veil of Ignorance testing protocol.**
-
-Any threshold value, zone definition, or detection parameter in `camera/` must cite its authoritative
-source. Values derived from training data are veil violations.
-
-**Hard requirements:**
-- Every numeric threshold in camera analysis code must have a source comment: either a first-principles derivation or a named authoritative reference (e.g. "Obico THRESH=0.08", "Bambu xcam sensitivity tiers").
-- Zone definitions (air zone = top 40% × inner 80%) must cite the rationale (geometry, camera FOV) not printer-specific knowledge.
-- If a value was chosen empirically, document it as `# empirical — see session 2026-03-XX` rather than leaving it unexplained.
-- No threshold or zone parameter may be introduced without a source comment. An unexplained numeric constant is a veil violation on its face.
-
-**Verification (add to veil audit checklist):**
-- [ ] Every `THRESH_*`, `*_TRIGGER`, `*_PCT` constant in `camera/` has a source comment
-- [ ] Zone boundary constants have rationale comments
-- [ ] No camera analysis constant is a bare magic number without explanation
-
----
-
-## Disk Persistence Pattern Standard (Mandatory)
-
-**Resilient feature state that must survive MCP server restarts uses the `~/.bambu-mcp/<feature>_<name>.ext` pattern.**
-
-This is the established architectural pattern for persisting per-printer state outside the MCP process. Any feature that must be available after a restart or in terminal gcode states (FINISH, FAILED) MUST use this pattern.
-
-**File naming convention:**
-- Directory: `~/.bambu-mcp/` (created on first write if absent)
-- Filename: `<feature>_<printer_name>.<ext>` — feature prefix + printer name + extension
-- Examples: `job_health_H2D.json`, `plate_thumb_H2D.png`, `plate_layout_H2D.png`
-- Characters in `<printer_name>` that are unsafe for filenames must be sanitized (replace `/`, ` `, `:` with `_`)
-
-**When to use this pattern:**
-- State that must be accessible after MCP server restart (e.g. last known print health)
-- Assets that need to persist through FINISH and FAILED states (e.g. plate thumbnails)
-- Any per-printer diagnostic artifact that the user or agent may query after the job ends
-
-**Hard requirements:**
-- Save: write immediately on state change; do not batch or defer to process exit
-- Load: attempt load at MCP startup and populate in-memory cache; log gracefully if file absent
-- Clear: clear on new job start so stale state from a prior job is not presented as current
-- Never store secrets, access codes, or session tokens in these files
-
-**Coverage checklist (run when adding any new persistent feature):**
-- [ ] File follows `~/.bambu-mcp/<feature>_<name>.ext` naming convention
-- [ ] `_save_<feature>()` called on every state-changing event
-- [ ] `_load_<feature>()` called at startup to restore from disk
-- [ ] `_clear_<feature>()` called at new-job-start to avoid stale data
-- [ ] Lifecycle documented in `api_reference_camera.py` (or relevant knowledge module)
