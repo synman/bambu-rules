@@ -272,7 +272,7 @@ This section governs how the rules files themselves are maintained. Read it befo
 | `~/bambu-printer-app/.github/copilot-instructions.md` | bambu-printer-app repo (preferred short name: **bpa**) | Project-specific extensions: architecture, build, container API, Docker/Watchtower |
 | `~/bambu-printer-manager/.github/copilot-instructions.md` | bambu-printer-manager repo (preferred short name: **bpm**) | Project-specific extensions: library architecture, build, telemetry, reference implementations |
 | `~/bambu-fw-fetch/.github/copilot-instructions.md` | bambu-fw-fetch repo | Project-specific extensions: dylib signatures, build/run, known API behavior |
-| `~/bambu-mcp/.github/copilot-instructions.md` | bambu-mcp repo | Project-specific extensions: MCP architecture, dependency update policy, BPM usage rules |
+| `~/bambu-mcp/.github/copilot-instructions.md` | bambu-mcp repo (preferred short name: **the mcp**) | Project-specific extensions: MCP architecture, dependency update policy, BPM usage rules |
 | `~/GitHub/bambu-mqtt/.github/copilot-instructions.md` | bambu-mqtt repo (preferred short name: **bmt**) | Project-specific extensions: standalone MQTT research/utility, ftpsclient, protocol experimentation |
 | `~/GitHub/webcamd/.github/copilot-instructions.md` | webcamd repo (preferred short name: **wcd**) | Project-specific extensions: MJPEG server, RTSPS ingestion, HAProxy, systemd service |
 
