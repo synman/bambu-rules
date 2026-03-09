@@ -8,6 +8,8 @@ Snapshots of this file and associated checkpoints are stored in `~/.copilot/base
 
 To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
 
+**Baseline confirmation gate (mandatory):** Before starting any baseline capture, use `ask_user` to confirm the user wants a baseline captured right now. Do not infer intent from task-completion language, praise, or phrasing like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer to a direct confirmation question.
+
 **Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
 1. **Run a full post-audit** of all work completed since the prior baseline. Apply the Post-Audit Rules Update Obligation: any behavioral gap or new pattern found must be written into the rules files before proceeding. A baseline is a declarative statement of usability — it cannot be captured over unresolved audit findings.
 2. Check every workspace repo for uncommitted changes (`git status --short`). If any exist, commit them first. A baseline that captures dirty working trees is invalid.
