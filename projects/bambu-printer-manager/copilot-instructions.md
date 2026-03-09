@@ -243,9 +243,9 @@ Before writing any new code in BPM, read the placement rules below and verify th
 `bpm_cache_path` is the single general-purpose root for all BPM on-disk state — metadata caches, elapsed tracking, or any future persistence need. It defaults to `~/.bpm` but is configurable via `BambuConfig`. Hardcoding any path under `Path.home()` bypasses this and breaks callers that set a custom path.
 
 - Any new named subdirectory is accessed as `self.config.bpm_cache_path / "<subdir>"`.
-- Every new subdirectory must be initialized (created) in `BambuConfig.set_new_bpm_cache_path()`. That method is the single registration point for all cache subdirs — read it before adding any persistence.
+- Subdirectories are created **lazily at first write** by `cache_write` (or by the write path itself). Do NOT register or pre-create subdirs in `BambuConfig.set_new_bpm_cache_path()` — that method only creates the root `bpm_cache_path`.
 
-**Pre-implementation gate:** Before adding any new filesystem persistence to BPM, read `BambuConfig.set_new_bpm_cache_path()` in full. Add the new subdir there. Use `self.config.bpm_cache_path / "<subdir>"` at every read/write call site.
+**Pre-implementation gate:** Before adding any new filesystem persistence to BPM, confirm you are using `cache_write` / `cache_read` / `cache_delete` from `bambutools` with `self.config.bpm_cache_path / "<subdir>"`. The subdir will be created automatically on first write.
 
 ### Enums, constants, and utility functions
 
