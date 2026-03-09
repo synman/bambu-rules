@@ -701,6 +701,7 @@ When the user responds with **"done"** or **"-i done"** as their first message a
 
 **Hard requirements:**
 - Run `mcp-reload` proactively the moment tools go missing — do not wait to be told.
+- **After any intentional restart of the MCP server process** (kill + relaunch), run `mcp-reload` immediately after confirming the new process is up — do not wait for a `tools_changed_notice`. The server restart itself invalidates the existing tool registration; the notice is a lagging consequence, not the trigger to act on.
 - Do not attempt to call unavailable tools; run `mcp-reload` first.
 - The script finds the current session GUID dynamically — it is always safe to run.
 
