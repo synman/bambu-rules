@@ -394,6 +394,7 @@ RULES_PRECHECK: ~/.copilot/copilot-instructions.md ✓ | <repo>/.github/copilot-
 - **No memory substitution**: Prior-session memory of rules does NOT satisfy this requirement. Each turn requires a fresh read.
 - **User-verifiable**: The `RULES_PRECHECK` line must appear in the visible response text so the user can audit compliance. Its absence is a compliance failure the user should call out.
 - **Scope**: Applies to all repos, all task types, all request sizes — including "quick fixes" and "simple" changes.
+- **Unknown term rule**: When the user uses a term, phrase, or command that is not immediately understood, the **first** action is to read both rules files — not to search the codebase. Project-specific vocabulary, modes, and commands are defined in the rules files. Searching the codebase before reading the rules is a RULES_PRECHECK violation.
 
 ## Scope Gate (Mandatory)
 
