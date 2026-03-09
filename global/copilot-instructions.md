@@ -560,6 +560,11 @@ When adding or changing support for a protocol or API field that belongs to an e
 - Do not perform a broad independent search, fail to find something, and then dismiss the prior evidence. Exhaust targeted verification first.
 - Specific cited names (variable names, file paths, function names) are higher-signal starting points than a fresh broad search.
 
+**Stale Session Context Rule (mandatory):**
+- Prior session summaries may contain "next steps" that are no longer valid — work was reverted, scope changed, or the problem was resolved differently. Never act on prior session next steps without verifying they still apply to the current state of the repos.
+- When determining how to test a change, derive the test path from the **actual set of repos and files modified in the current session** — not from session summary notes. If no changes were made to a repo, it is not part of the test path.
+- Stale next steps that contradict current repo state must be discarded, not followed.
+
 ### Mandatory Verification Depth Requirements
 
 **For ANY method/function documentation or analysis:**
