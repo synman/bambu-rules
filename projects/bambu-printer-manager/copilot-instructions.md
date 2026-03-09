@@ -245,7 +245,7 @@ Before writing any new code in BPM, read the placement rules below and verify th
 - Any new named subdirectory is accessed as `self.config.bpm_cache_path / "<subdir>"`.
 - Subdirectories are created **lazily at first write** by `cache_write` (or by the write path itself). Do NOT register or pre-create subdirs in `BambuConfig.set_new_bpm_cache_path()` — that method only creates the root `bpm_cache_path`.
 
-**Pre-implementation gate:** Before adding any new filesystem persistence to BPM, confirm you are using `cache_write` / `cache_read` / `cache_delete` from `bambutools` with `self.config.bpm_cache_path / "<subdir>"`. The subdir will be created automatically on first write.
+**Pre-implementation gate:** Before adding any new filesystem persistence to BPM, confirm you are using `make_cache_key` / `cache_write` / `cache_read` / `cache_delete` from `bambutools` with `self.config.bpm_cache_path / "<subdir>"`. The subdir will be created automatically on first write. Always generate keys via `make_cache_key` — never construct filename stems manually.
 
 ### Enums, constants, and utility functions
 
