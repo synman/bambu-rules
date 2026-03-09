@@ -898,5 +898,11 @@ All of the following, in order:
 1. `git commit` with message referencing the issue number (`fixes #N` or `closes #N`)
 2. `git push`
 3. **Rules update** — if the fix reveals a behavioral gap that was previously undocumented, write it into the rules before closing the issue. A fix without a rules update is a fix that can be undone.
-4. GitHub issue: close if fully resolved, comment with fix SHA if already closed
-5. `bambu-rules` sync — push updated project rules to remote mirror
+4. **Live verification** — query the running system to confirm the fix is observable. Commit evidence alone does not satisfy this gate. The verification method must match the issue type:
+   - Capability/state bug → call the relevant MCP tool and confirm the corrected value in the response
+   - Knowledge gap → call `get_knowledge_topic()` and confirm the corrected text is present
+   - Tool behavior bug → invoke the tool and observe the corrected behavior
+   - HTTP API bug → make the HTTP request and confirm the corrected response
+   If the fix requires a reinstall or server restart to take effect, perform that first, then verify.
+5. GitHub issue: close only after step 4 passes. Include the verification result (tool name + observed value) in the closing comment.
+6. `bambu-rules` sync — push updated project rules to remote mirror
