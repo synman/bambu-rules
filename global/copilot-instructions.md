@@ -9,9 +9,10 @@ Snapshots of this file and associated checkpoints are stored in `~/.copilot/base
 To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
 
 **Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
-1. Check every workspace repo for uncommitted changes (`git status --short`). If any exist, commit them first. A baseline that captures dirty working trees is invalid.
-2. Ensure all workspace repos are pushed (`git status --branch` shows no `ahead`). A baseline whose SHAs are not on the remote cannot be restored from the remote.
-3. Capture baseline files, update the Known Baselines table below, then **sync to bambu-rules in the same turn** (see `bambu-rules remote repository` section under Rules File Maintenance).
+1. **Run a full post-audit** of all work completed since the prior baseline. Apply the Post-Audit Rules Update Obligation: any behavioral gap or new pattern found must be written into the rules files before proceeding. A baseline is a declarative statement of usability — it cannot be captured over unresolved audit findings.
+2. Check every workspace repo for uncommitted changes (`git status --short`). If any exist, commit them first. A baseline that captures dirty working trees is invalid.
+3. Ensure all workspace repos are pushed (`git status --branch` shows no `ahead`). A baseline whose SHAs are not on the remote cannot be restored from the remote.
+4. Capture baseline files, update the Known Baselines table below, then **sync to bambu-rules in the same turn** (see `bambu-rules remote repository` section under Rules File Maintenance).
 
 **Baseline naming convention:** Use descriptive names that reflect *what changed*, not temporal state. Never use names like `current-state` or `latest` — every snapshot becomes historical the moment it is captured. Good examples: `post-audit-clean`, `immutable-guard`, `rules-hardened`.
 
