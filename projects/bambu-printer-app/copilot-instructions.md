@@ -427,7 +427,7 @@ cd /path/to/bambu-printer-manager && pre-commit run
 ```bash
 mkdocs build --clean  # Generates from mkdocs.yml with full validation
 ```
-**Critical**: After creating or modifying any `.md` files in `docs/`, ALWAYS validate with `mkdocs build --clean` to catch broken links, missing anchors, and formatting issues before committing. No INFO-level warnings should be present in the output.
+**Critical**: After creating or modifying any `.md` files in `docs/` or any Python docstrings (since `mkdocstrings-python` renders them into the site), ALWAYS validate with `mkdocs build --clean` to catch broken links, missing anchors, and formatting issues before committing. No INFO-level warnings should be present in the output.
 
 ## Project Conventions
 
@@ -555,8 +555,6 @@ TOKEN=$(BPM_SECRETS_PASS=... python ../bambu-printer-manager/secrets.py get dock
 # List all keys
 python ../bambu-printer-manager/secrets.py list
 ```
-
-**Test Fixture Data Privacy**: Treat everything under `tests/` as private/sensitive validation data. Never reference, quote, link, or cite `tests/` files in public-facing documentation, examples, commit messages, PR descriptions, or assistant/user-facing responses. Use source code under `src/` and public upstream repositories for provenance instead.
 
 **SSL/TLS**: MQTT connections use SSL with certificate validation. See ssl.create_default_context() usage in BambuPrinter.__init__.
 

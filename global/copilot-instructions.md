@@ -834,7 +834,7 @@ For `bambu-printer-manager` specifically, always include this in any sub-agent p
 
 **RTSPS URL credentials**: RTSPS URLs embed the printer access code as a password (`rtsps://bblp:<access_code>@...`). Never display, return, or log these URLs with the password intact. Always redact to `rtsps://bblp:****@...` before any user-visible output, MCP tool return value, or log entry at INFO or above.
 
-**Test fixture data privacy**: Treat everything under `tests/` as private/sensitive validation data. Never reference, quote, link, or cite test fixture files in public-facing documentation, commit messages, PR descriptions, or user-facing responses. Use source code under `src/` and public upstream repositories for provenance instead.
+**Test fixture data privacy**: Treat everything under `tests/` as private/sensitive validation data. Never reference, quote, link, or cite test fixture files in public-facing documentation, examples, commit messages, PR descriptions, or assistant/user-facing responses. Use source code under `src/` and public upstream repositories for provenance instead.
 
 **Path traversal**: Validate all user-provided paths, especially in file-transfer or file-serving operations.
 
