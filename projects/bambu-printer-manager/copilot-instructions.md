@@ -218,6 +218,42 @@ This project targets **all Bambu Lab printers** (library + frontend), not a sing
 - Missing fields alone are not a legacy-logic failure. Example: if `ams_mapping2` is missing, add it alongside legacy `ams_mapping` first.
 - Do not alter existing `ams_mapping` semantics unless breakage is demonstrated with direct evidence.
 
+## Code Placement Rules (Mandatory)
+
+Before writing any new code in BPM, read the placement rules below and verify the established patterns in the files they reference. These rules are prescriptive — they define where new code **must** go, not merely where it tends to appear.
+
+### `bambuprinter.py` module scope
+
+**Module-level content is limited to:**
+- `logger = logging.getLogger(LoggerName)` — exactly one logger assignment
+- `class BambuPrinter:` — the class definition
+
+**Never add module-level functions, constants, or variables to `bambuprinter.py`**, even with a `_private` prefix. This file defines one class. That is its entire contract.
+
+- Helper functions with instance state → private methods on `BambuPrinter` in the `# region private methods` section
+- Pure utilities without instance state → `bambutools.py`
+- MQTT command templates and protocol constants → `bambucommands.py`
+
+**Pre-implementation gate:** Before adding any helper to `bambuprinter.py`, read the `# region private methods` section. Find the nearest sibling method and follow its exact pattern — method signature, use of `self`, exception handling, return type.
+
+### Filesystem persistence and `bpm_cache_path`
+
+**All BPM filesystem persistence must route through `self.config.bpm_cache_path`.** Never use `Path.home()`, `pathlib.Path("~/.bpm")`, or any hardcoded path.
+
+`bpm_cache_path` is the single general-purpose root for all BPM on-disk state — metadata caches, elapsed tracking, or any future persistence need. It defaults to `~/.bpm` but is configurable via `BambuConfig`. Hardcoding any path under `Path.home()` bypasses this and breaks callers that set a custom path.
+
+- Any new named subdirectory is accessed as `self.config.bpm_cache_path / "<subdir>"`.
+- Every new subdirectory must be initialized (created) in `BambuConfig.set_new_bpm_cache_path()`. That method is the single registration point for all cache subdirs — read it before adding any persistence.
+
+**Pre-implementation gate:** Before adding any new filesystem persistence to BPM, read `BambuConfig.set_new_bpm_cache_path()` in full. Add the new subdir there. Use `self.config.bpm_cache_path / "<subdir>"` at every read/write call site.
+
+### Enums, constants, and utility functions
+
+- New enums → `bambutools.py`, following the existing `IntEnum`/`Enum` patterns with docstrings
+- New MQTT command templates → `bambucommands.py`
+- New pure utility functions (no instance state, no config dependency) → `bambutools.py`
+- New instance-scoped helpers → private methods on the relevant class
+
 ## Architecture
 
 **Central Class**: `BambuPrinter` (see `src/bpm/bambuprinter.py`) is the main abstraction layer. All printer interaction flows through this class.
