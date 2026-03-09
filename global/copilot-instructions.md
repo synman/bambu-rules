@@ -13,6 +13,8 @@ To revert everything to a named baseline, restore the rules file AND reset all w
 2. Ensure all workspace repos are pushed (`git status --branch` shows no `ahead`). A baseline whose SHAs are not on the remote cannot be restored from the remote.
 3. Capture baseline files, update the Known Baselines table below, then **sync to bambu-rules in the same turn** (see `bambu-rules remote repository` section under Rules File Maintenance).
 
+**Baseline naming convention:** Use descriptive names that reflect *what changed*, not temporal state. Never use names like `current-state` or `latest` — every snapshot becomes historical the moment it is captured. Good examples: `post-audit-clean`, `immutable-guard`, `rules-hardened`.
+
 ```bash
 # --- CAPTURE a new baseline ---
 NAME="<baseline-name>"
