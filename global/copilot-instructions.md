@@ -19,9 +19,18 @@ To revert everything to a named baseline, restore the rules file AND reset all w
 
 **Baseline naming convention:** Use descriptive names that reflect *what changed*, not temporal state. Never use names like `current-state` or `latest` — every snapshot becomes historical the moment it is captured. Good examples: `post-audit-clean`, `immutable-guard`, `rules-hardened`.
 
+**Baseline versioning scheme (SemVer):**
+Every baseline carries a `vMAJOR.MINOR.PATCH` version tag applied to all in-scope repos. Use the following criteria:
+- **MAJOR** — breaking change to a core API, protocol, or rules structure (rare)
+- **MINOR** — new feature, new coverage additions, or meaningful behavioral rule change (most baselines)
+- **PATCH** — rules-only fix, typo, doc correction with no functional change
+
+`bambu-printer-manager` is **excluded from SemVer tagging** (BPM Write Scope Lock). Its installed artifact SHA is recorded in the baseline SHA table instead.
+
 ```bash
 # --- CAPTURE a new baseline ---
 NAME="<baseline-name>"
+VERSION="v<MAJOR>.<MINOR>.<PATCH>"   # increment per versioning scheme above
 cp ~/.copilot/copilot-instructions.md ~/.copilot/baselines/copilot-instructions.${NAME}.md
 cp ~/bambu-printer-manager/.github/copilot-instructions.md ~/.copilot/baselines/${NAME}.bambu-printer-manager.copilot-instructions.md
 cp ~/bambu-printer-app/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-printer-app.copilot-instructions.md
@@ -29,6 +38,13 @@ cp ~/bambu-mcp/.github/copilot-instructions.md             ~/.copilot/baselines/
 cp ~/bambu-fw-fetch/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.bambu-fw-fetch.copilot-instructions.md
 cp ~/GitHub/bambu-mqtt/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-mqtt.copilot-instructions.md
 cp ~/GitHub/webcamd/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.webcamd.copilot-instructions.md
+# Tag all in-scope repos at their captured SHAs (bpm excluded — Write Scope Lock)
+git -C ~/bambu-printer-app   tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-printer-app   push origin "${VERSION}"
+git -C ~/bambu-mcp           tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-mcp           push origin "${VERSION}"
+git -C ~/bambu-fw-fetch      tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-fw-fetch      push origin "${VERSION}"
+git -C ~/GitHub/bambu-mqtt   tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-mqtt   push origin "${VERSION}"
+git -C ~/GitHub/webcamd      tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/webcamd      push origin "${VERSION}"
+git -C ~/GitHub/bambu-rules  tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-rules  push origin "${VERSION}"
 # Then update Known Baselines table below, and sync to bambu-rules.
 
 # --- RESTORE from local baselines ---
@@ -60,19 +76,19 @@ cp ~/GitHub/bambu-rules/baselines/<baseline-name>.bambu-printer-manager.copilot-
 ```
 
 **Known baselines:**
-| Name | Date | Description |
-|------|------|-------------|
-| `2026-03-08-whitelist-baseline` | 2026-03-08 | BPM write scope lock (whitelist), anti-argument clause, full-delegation traps, enforcement model validated |
-| `2026-03-08-workspace-expansion` | 2026-03-08 | Added bambu-mqtt and webcamd to workspace; no-attribution rule consolidated |
-| `2026-03-08-full-snapshot` | 2026-03-08 | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
-| `2026-03-08-current-state` | 2026-03-08 | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
-| `2026-03-08-clean` | 2026-03-08 | All 6 repos clean; bpa filament catalog API commit included |
-| `2026-03-08-post-audit-stream` | 2026-03-08 | Full post-audit complete; view_stream tab targeting + RTSPS freeze recovery; bambu-rules PR merged; all 6 repos clean |
-| `2026-03-08-rules-hardened` | 2026-03-08 | bambu-rules maintenance rules + baseline restore paradox + sync obligation suspension; rules treated as code; all 7 rules files + 6 repos in sync |
-| `2026-03-08-immutable-guard` | 2026-03-08 | Baseline immutability guard (agent + subagents); bambu-rules rename; README rewritten with full rules reference |
-| `2026-03-08-post-audit-clean` | 2026-03-08 | Post-audit: removed hardcoded version line from mcp rules; removed duplicated Session Start Protocol from bpa rules (no-duplication fix) |
-| `2026-03-08-naming-convention` | 2026-03-08 | Added baseline naming convention rule (no current-state/latest names) to global rules |
-| `2026-03-09-coverage-wording` | 2026-03-09 | BPM MCP Coverage Standard wording tightened (explicitly names api_server.py); naming-convention mcp snapshot removed from baselines |
+| Name | Date | Version | Description |
+|------|------|---------|-------------|
+| `2026-03-08-whitelist-baseline` | 2026-03-08 | — | BPM write scope lock (whitelist), anti-argument clause, full-delegation traps, enforcement model validated |
+| `2026-03-08-workspace-expansion` | 2026-03-08 | — | Added bambu-mqtt and webcamd to workspace; no-attribution rule consolidated |
+| `2026-03-08-full-snapshot` | 2026-03-08 | — | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
+| `2026-03-08-current-state` | 2026-03-08 | — | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
+| `2026-03-08-clean` | 2026-03-08 | — | All 6 repos clean; bpa filament catalog API commit included |
+| `2026-03-08-post-audit-stream` | 2026-03-08 | — | Full post-audit complete; view_stream tab targeting + RTSPS freeze recovery; bambu-rules PR merged; all 6 repos clean |
+| `2026-03-08-rules-hardened` | 2026-03-08 | — | bambu-rules maintenance rules + baseline restore paradox + sync obligation suspension; rules treated as code; all 7 rules files + 6 repos in sync |
+| `2026-03-08-immutable-guard` | 2026-03-08 | — | Baseline immutability guard (agent + subagents); bambu-rules rename; README rewritten with full rules reference |
+| `2026-03-08-post-audit-clean` | 2026-03-08 | — | Post-audit: removed hardcoded version line from mcp rules; removed duplicated Session Start Protocol from bpa rules (no-duplication fix) |
+| `2026-03-08-naming-convention` | 2026-03-08 | — | Added baseline naming convention rule (no current-state/latest names) to global rules |
+| `2026-03-09-coverage-wording` | 2026-03-09 | **v1.0.0** | BPM MCP Coverage Standard wording tightened (explicitly names api_server.py); naming-convention mcp snapshot removed from baselines |
 
 **`2026-03-08-whitelist-baseline` — repo SHAs:**
 | Repo | Branch | SHA |
