@@ -25,7 +25,7 @@ Baseline capture follows four sequential phases. Phases 1 and 4 use concurrent b
 
 ---
 
-#### Phase 1 — Parallel Audits *(launch all 4 concurrently as background task agents)*
+#### Phase 1 — Parallel Audits *(launch A1, A2, and B concurrently as background task agents; run C as a bash block in the main turn)*
 
 **Rules freeze gate (mandatory — complete before launching any Phase 1 agent):**
 
@@ -109,13 +109,13 @@ Required findings statement: *"Repo state: all 6 repos clean and pushed."* If an
 - Fix all gaps identified by Agents A1, A2, and B
 - Write rules for every new pattern (Post-Audit Rules Update Obligation)
 - Commit and push affected repos
-- **Re-run only the specific sub-check that failed, not the full agent.** If A1 was clean and only A2's coverage had gaps, re-run only A2. If a single Agent B check failed (e.g., knowledge content placement), re-run that check in isolation and produce a targeted findings statement. Repeat until the affected agent's findings statement is clean.
+- **Re-run only the specific sub-check that failed, not the full agent.** If A1 was clean and only A2's coverage had gaps, re-run only A2. If a single Agent B check failed (e.g., knowledge content placement), re-run that check in isolation and produce a targeted findings statement. Repeat until the affected agent's findings statement is clean. *(For A1, which has no sub-checks, re-run the full agent scoped to the area where the gap was found — e.g., "review only behavioral gaps in bambu-mcp since prior baseline.")*
 
 ---
 
 #### Phase 3 — Confirm *(sequential)*
 
-1. **Render and open the gap report.** Generate `/tmp/bpm-mcp-gap-report.html` from the most recent `~/.copilot/session-state/*/files/bpm-mcp-gap-report.md` using Python's `markdown` library (`tables` + `fenced_code` extensions).
+1. **Render and open the gap report.** Generate `/tmp/bpm-mcp-gap-report.html` from the most recent `~/.copilot/session-state/*/files/bpm-mcp-gap-report.md` using Python's `markdown` library (`tables` + `fenced_code` extensions). If the glob matches multiple files (multiple active sessions), use `ls -t ~/.copilot/session-state/*/files/bpm-mcp-gap-report.md | head -1` and take that file.
 
    **Required report header** (must appear above all audit content — a report missing any field is invalid):
    - **Date/time:** `current_datetime` value from agent prompt verbatim (ISO 8601). Never infer or fabricate.
@@ -151,24 +151,26 @@ cp ~/GitHub/webcamd/.github/copilot-instructions.md        ~/.copilot/baselines/
 cp ~/.copilot/session-state/*/files/bpm-mcp-gap-report.md  ~/.copilot/baselines/${NAME}.bpm-mcp-gap-report.md
 ```
 
-**Step 4b — Tag + push** (launch 6 concurrent background task agents, one per repo):
+**Step 4b — Tag + push** (launch 5 concurrent background task agents, one per repo):
 
 Each agent runs: `git -C <repo> tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C <repo> push origin "${VERSION}"`
 
-Repos: `~/bambu-printer-app` · `~/bambu-mcp` · `~/bambu-fw-fetch` · `~/GitHub/bambu-mqtt` · `~/GitHub/webcamd` · `~/GitHub/bambu-rules`
-*(bpm excluded — Write Scope Lock)*
+Repos: `~/bambu-printer-app` · `~/bambu-mcp` · `~/bambu-fw-fetch` · `~/GitHub/bambu-mqtt` · `~/GitHub/webcamd`
+*(bpm excluded — Write Scope Lock; bambu-rules tagged in Step 4c after sync commit)*
 
-Wait for all 6 to complete. **If any tag agent fails** (tag already exists, push rejected, network error): report which repo failed and the exact error. Do not proceed to Step 4c until all 6 tags are confirmed pushed. If a tag already exists for this version, treat it as a failure — either increment the patch version or delete the existing tag explicitly after user confirmation.
+Wait for all 5 to complete. **If any tag agent fails** (tag already exists, push rejected, network error): report which repo failed and the exact error. Do not proceed to Step 4c until all 5 tags are confirmed pushed. If a tag already exists for this version, treat it as a failure — either increment the patch version or delete the existing tag explicitly after user confirmation. **If the version is incremented after Step 4a snapshots were already copied:** the snapshot filenames embed `${NAME}` not `${VERSION}` so they remain valid, but the `VERSION` variable used in all tag commands must be updated to the new value before re-attempting 4b. Delete any tags already pushed under the old version from repos that succeeded before the failure.
 
 **Step 4c — Finalize** (sequential):
-- Update the Known Baselines table in this file
+- Update the Known Baselines table in this file (add name, date, version, description, and BPM installed SHA)
+- Get BPM installed SHA: `pip show bpm -q --path 2>/dev/null | xargs -I{} git -C {} rev-parse HEAD 2>/dev/null || git -C $(python ~/bambu-mcp/.venv/bin/python -c "import bpm, os; print(os.path.dirname(bpm.__file__))/../.. " 2>/dev/null) rev-parse HEAD 2>/dev/null` — or simply `cd ~/bambu-mcp && .venv/bin/pip show bpm | grep Location | awk '{print $2}' | xargs -I{} git -C {} rev-parse HEAD`
 - Sync to bambu-rules: `cp ~/.copilot/copilot-instructions.md ~/GitHub/bambu-rules/global/copilot-instructions.md && cd ~/GitHub/bambu-rules && git add -A && git commit -m "baseline: ${NAME} ${VERSION}" && git push`
+- Tag bambu-rules **after** the sync commit: `git -C ~/GitHub/bambu-rules tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-rules push origin "${VERSION}"`
 
 Required capture statement: *"Baseline [NAME] [VERSION] captured: 8 snapshots, 6 tags pushed, bambu-rules synced."*
 
 #### Post-Baseline Process Optimization (Mandatory)
 
-Immediately after the required capture statement is produced, silently launch a `general-purpose` background agent with the following prompt:
+Immediately after the required capture statement is produced, silently launch a `general-purpose` background agent with the following prompt. **Before launching, substitute the actual baseline name and version for `[NAME]` and `[VERSION]` in the prompt below — do not send the template text literally.**
 
 > "Read `~/.copilot/copilot-instructions.md` in full. Focus on the baseline workflow section (Phases 1–4, including the concurrent agent structure, audit steps, gate conditions, and finalization). Review it against the baseline run that just completed ([NAME] [VERSION]): what was slow, redundant, unclear, or caused rework? Produce a concise list of specific proposed changes — each with: (1) what to change, (2) exact location in the rules file, (3) why it improves the process. Do not modify any file. Return only the proposals."
 
@@ -211,22 +213,22 @@ cp ~/GitHub/bambu-rules/baselines/copilot-instructions.${NAME}.md ~/.copilot/cop
 **Restore paradox (mandatory awareness):** After any restore, explicitly decide whether to sync bambu-rules before touching it — see bambu-rules remote repository section.
 
 **Known baselines:**
-| Name | Date | Version | Description |
-|------|------|---------|-------------|
-| `2026-03-08-whitelist-baseline` | 2026-03-08 | — | BPM write scope lock (whitelist), anti-argument clause, full-delegation traps, enforcement model validated |
-| `2026-03-08-workspace-expansion` | 2026-03-08 | — | Added bambu-mqtt and webcamd to workspace; no-attribution rule consolidated |
-| `2026-03-08-full-snapshot` | 2026-03-08 | — | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
-| `2026-03-08-current-state` | 2026-03-08 | — | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
-| `2026-03-08-clean` | 2026-03-08 | — | All 6 repos clean; bpa filament catalog API commit included |
-| `2026-03-08-post-audit-stream` | 2026-03-08 | — | Full post-audit complete; view_stream tab targeting + RTSPS freeze recovery; bambu-rules PR merged; all 6 repos clean |
-| `2026-03-08-rules-hardened` | 2026-03-08 | — | bambu-rules maintenance rules + baseline restore paradox + sync obligation suspension; rules treated as code; all 7 rules files + 6 repos in sync |
-| `2026-03-08-immutable-guard` | 2026-03-08 | — | Baseline immutability guard (agent + subagents); bambu-rules rename; README rewritten with full rules reference |
-| `2026-03-08-post-audit-clean` | 2026-03-08 | — | Post-audit: removed hardcoded version line from mcp rules; removed duplicated Session Start Protocol from bpa rules (no-duplication fix) |
-| `2026-03-08-naming-convention` | 2026-03-08 | — | Added baseline naming convention rule (no current-state/latest names) to global rules |
-| `2026-03-09-coverage-wording` | 2026-03-09 | **v1.0.0** | BPM MCP Coverage Standard wording tightened (explicitly names api_server.py); naming-convention mcp snapshot removed from baselines |
-| `ams-pause-resume-knowledge` | 2026-03-10 | **v1.0.1** | AMS/pause-resume knowledge documented; resume command decision table; protocol MQTT command structures; gitignore clean |
-| `rest-compliance-printer-param` | 2026-03-10 | **v1.0.2** | REST compliance (PATCH/DELETE routes), write guard parity, required printer param OpenAPI, contract parity gates, push alerts, AMS dryer polling, bpa audit exclusion, sdcard_file_exists + set_new_bpm_cache_path cataloged, cached SD card properties exposed |
-| `rest-compliance-printer-param-2` | 2026-03-10 | **v1.0.3** | All Agent B gates clean; analyze_active_job printer param fix; write guard ⚠️ notes for download_file + set_spool_k_factor; E7/E8 stream UI gaps fixed; BambuState.stat/fun excluded; knowledge governance rules; Rules Architecture Integrity; FastMCP response size constraint |
+| Name | Date | Version | BPM SHA | Description |
+|------|------|---------|---------|-------------|
+| `2026-03-08-whitelist-baseline` | 2026-03-08 | — | — | BPM write scope lock (whitelist), anti-argument clause, full-delegation traps, enforcement model validated |
+| `2026-03-08-workspace-expansion` | 2026-03-08 | — | — | Added bambu-mqtt and webcamd to workspace; no-attribution rule consolidated |
+| `2026-03-08-full-snapshot` | 2026-03-08 | — | — | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
+| `2026-03-08-current-state` | 2026-03-08 | — | — | ⚠️ INVALID — bpa had 4 uncommitted files at capture time |
+| `2026-03-08-clean` | 2026-03-08 | — | — | All 6 repos clean; bpa filament catalog API commit included |
+| `2026-03-08-post-audit-stream` | 2026-03-08 | — | — | Full post-audit complete; view_stream tab targeting + RTSPS freeze recovery; bambu-rules PR merged; all 6 repos clean |
+| `2026-03-08-rules-hardened` | 2026-03-08 | — | — | bambu-rules maintenance rules + baseline restore paradox + sync obligation suspension; rules treated as code; all 7 rules files + 6 repos in sync |
+| `2026-03-08-immutable-guard` | 2026-03-08 | — | — | Baseline immutability guard (agent + subagents); bambu-rules rename; README rewritten with full rules reference |
+| `2026-03-08-post-audit-clean` | 2026-03-08 | — | — | Post-audit: removed hardcoded version line from mcp rules; removed duplicated Session Start Protocol from bpa rules (no-duplication fix) |
+| `2026-03-08-naming-convention` | 2026-03-08 | — | — | Added baseline naming convention rule (no current-state/latest names) to global rules |
+| `2026-03-09-coverage-wording` | 2026-03-09 | **v1.0.0** | — | BPM MCP Coverage Standard wording tightened (explicitly names api_server.py); naming-convention mcp snapshot removed from baselines |
+| `ams-pause-resume-knowledge` | 2026-03-10 | **v1.0.1** | — | AMS/pause-resume knowledge documented; resume command decision table; protocol MQTT command structures; gitignore clean |
+| `rest-compliance-printer-param` | 2026-03-10 | **v1.0.2** | — | REST compliance (PATCH/DELETE routes), write guard parity, required printer param OpenAPI, contract parity gates, push alerts, AMS dryer polling, bpa audit exclusion, sdcard_file_exists + set_new_bpm_cache_path cataloged, cached SD card properties exposed |
+| `rest-compliance-printer-param-2` | 2026-03-10 | **v1.0.3** | `4c3ac821` | All Agent B gates clean; analyze_active_job printer param fix; write guard ⚠️ notes for download_file + set_spool_k_factor; E7/E8 stream UI gaps fixed; BambuState.stat/fun excluded; knowledge governance rules; Rules Architecture Integrity; FastMCP response size constraint |
 
 **`2026-03-08-whitelist-baseline` — repo SHAs:**
 | Repo | Branch | SHA |
