@@ -779,11 +779,11 @@ When the user responds with **"done"** or **"-i done"** as their first message a
 - **After any intentional restart of the MCP server process** (kill + relaunch), run `mcp-reload` immediately after confirming the new process is up — do not wait for a `tools_changed_notice`. The server restart itself invalidates the existing tool registration; the notice is a lagging consequence, not the trigger to act on.
 - Do not attempt to call unavailable tools; run `mcp-reload` first.
 - The script finds the current session GUID dynamically — it is always safe to run.
-- **Stream view refresh after restart (mandatory):** After any MCP server restart or MJPEG stream restart:
+- **Stream view refresh after restart (blocking gate — do not advance to any other work until complete):** After any MCP server restart or MJPEG stream restart, the stream check is the FIRST action taken after `mcp-reload` returns — before reading rules, before running tests, before any other tool call:
   1. Check Safari for open tabs pointing at any `http://localhost:<port>/` stream URL using AppleScript (`tell application "Safari" … URL of t`).
-  2. If a stream tab is found (even if the stream server is currently dead), start/restart the stream with `view_stream()` and reload the tab by reassigning its URL: `set URL of t to "http://localhost:<port>/"`. Use URL reassignment — `do JavaScript "location.reload()"` requires "Allow JavaScript from Apple Events" which may be disabled.
+  2. If a stream tab is found (even if the stream server is currently dead), start/restart the stream with `start_stream()` and reload the tab by reassigning its URL: `set URL of t to "http://localhost:<port>/"`. Use URL reassignment — `do JavaScript "location.reload()"` requires "Allow JavaScript from Apple Events" which may be disabled.
   3. If no stream tab is open but `get_stream_url()` shows `streaming: true`, call `view_stream()` to open a fresh tab.
-  4. Do not skip this step. The user's open browser tab will be pointing at a dead server after any restart.
+  4. **Failure mode to avoid:** Moving on to the next work item without executing this check. The stream check is not a trailing note — it is step one of post-reload. A skipped stream check is the same class of error as a skipped RULES_PRECHECK.
 
 **`copilots` wrapper** (`~/bin/copilots`):
 - `copilots` — resume most recent session (default)
