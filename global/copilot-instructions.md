@@ -592,6 +592,8 @@ Confirmation is only valid when it comes in direct response to an `ask_user` cal
 - The approval must be scoped to the specific search, not open-ended. "Yes, search for X" ≠ blanket permission for all future searches.
 - Approval given in a prior session turn has expired — ask again in the current turn if the search was not already performed.
 
+*Note: This section is the Tier 2 source registration gate (from the Scientific Method Standard) applied to web search. A web search is a proposal to consult an unregistered source. Approval here = approval to add that source to the registry for this specific claim.*
+
 ## KISS Principle (Mandatory)
 
 **KISS is a hard requirement with no exceptions**: Keep It Simple and Straightforward.
@@ -624,7 +626,6 @@ For **all work** (simple or complex), prioritize quality over speed.
 
 **Hard requirements:**
 - Prefer correctness, conciseness, repeatability, and thorough analysis over fast turnaround.
-- Verify assumptions with source evidence before editing, even for small changes.
 - Keep responses concise but complete; do not skip required validation to save time.
 - Use deterministic, minimal patches that are easy to review and reproduce.
 
@@ -633,6 +634,8 @@ For **all work** (simple or complex), prioritize quality over speed.
 If a request requires inferring a domain-specific value, condition, or definition that is not directly visible in the code (e.g. what "no filament loaded" means in data terms), **ask before assuming**.
 
 **Hard requirement:** If you find yourself spending non-trivial effort to deduce something that the user could answer in one sentence, stop and ask. A wrong assumption costs more than a one-line clarification.
+
+*This is the Tier 3 fast-path from the Scientific Method Standard: when no authoritative source can supply the missing value and no experiment is possible, the experiment IS the ask. The human's answer becomes the peer-reviewed evidence.*
 
 ## Proactive Bed Preheat Suggestion (Mandatory)
 
@@ -678,6 +681,8 @@ The Copilot CLI terminal UI truncates tool output to a summary line (e.g. "└ 2
 
 ## Protocol Field Mapping Parity Rule (Mandatory)
 
+*This section is the Scientific Method Standard applied to protocol field analysis: evidence requirements (1–4) = experiment design; parity checklist = falsification test.*
+
 When adding or changing support for a protocol or API field that belongs to an existing family (e.g. flags in a shared bitfield, options within a message type), the implementation MUST follow the proven pattern used by sibling fields unless direct evidence proves otherwise.
 
 **Hard requirements:**
@@ -705,7 +710,94 @@ When adding or changing support for a protocol or API field that belongs to an e
 - Did I avoid adding special-case logic without explicit evidence?
 - Did I document why this field matches or intentionally differs from sibling behavior?
 
+## Scientific Method — Universal Epistemological Standard (Mandatory)
+
+Every consequential decision or factual claim the agent makes must follow the **scientific method**. The human agent is the explicit peer reviewer for anything that cannot be settled by an existing registered authoritative source.
+
+### Scope: everything consequential
+
+This standard applies to:
+- Every factual/technical claim written into any rules file
+- Every architecture or approach decision before implementation
+- Every debugging conclusion ("root cause is X") before a fix is written
+- Every protocol or firmware interpretation before it drives code or GCode
+- Every calibration value or motion plan before it is sent to hardware
+- Any assertion that, if wrong, would cause incorrect behavior or hardware damage
+
+**Does NOT apply to:**
+- Internal procedural rules ("stage and stop — never commit")
+- Safety rules from first principles ("never send GCode without user permission")
+- Agent behavioral directives (what the agent must do, not assertions about the world)
+
+**The human agent is the peer reviewer.** Peer review is the final step of the scientific method. It is specifically required **when the assertion cannot already be verified by a registered authoritative source**. When a registered source directly and specifically settles the claim with quotable evidence, the source IS the peer review for that class of fact. The human gates what evidence alone cannot settle.
+
+### The Three-Tier Resolution Model
+
+**Tier 1 — Self-verifiable (no human gate required):**
+A registered authoritative source directly and specifically supports the claim with quotable evidence. The agent verifies, records the evidence inline, marks `[VERIFIED: SourceName]`, and proceeds. No `ask_user` required.
+
+**Tier 2 — Source exists but not yet registered (human gates source admission only):**
+The agent has found a candidate source that would settle the claim, but it is not yet in the Authoritative Sources registry. Present the source to the user via `ask_user`:
+> "I found [source name] at [URL] which directly addresses [claim]. May I add it to the authoritative sources registry and use it to verify this?"
+After YES: add to registry → run experiment → record evidence → mark `[VERIFIED: SourceName]`. No further human gate needed for that specific finding. This is also the gate for any web search — a web search is a Tier 2 source access event.
+
+**Tier 3 — Cannot be settled by any source (full peer review mandatory):**
+The assertion is novel, empirical, architectural, or involves judgment that no registry source can definitively resolve.
+> Present: observation → question → hypothesis → falsification test → evidence gathered → proposed conclusion.
+> Ask: "Based on this evidence and reasoning, I propose [conclusion]. Do you agree?"
+Only after explicit YES: act. Applies equally to rules claims, code changes, calibration decisions, and any other consequential output.
+
+### The Scientific Method Lifecycle (7 mandatory steps, Tier 2 and Tier 3)
+
+All seven steps must complete in order:
+
+1. **Observation** — record what was observed that raises the need for this decision
+2. **Question** — formulate a precise, answerable research question
+3. **Hypothesis** — state the claim in **falsifiable** terms. Vague assertions are not falsifiable and are therefore guesses — never drive consequential actions from them.
+   - ✅ Falsifiable: "The H2D accepts Marlin `marlin2` dialect; `G91`/`G90` mode switching is valid"
+   - ❌ Not falsifiable: "Bambu probably uses something Marlin-like" — too vague to test
+4. **Falsification test** — design the specific experiment that would **refute** the hypothesis *before running it*. What finding would prove it wrong?
+5. **Experiment** — run the falsification test using a registered source (Tier 1/2) or collect empirical evidence (Tier 3). For Tier 2: gate on source registration first.
+6. **Evidence** — record the specific, quotable finding. Must be reproducible — another agent running the same test must reach the same result.
+7. **Conclusion** — state whether the hypothesis is SUPPORTED, REFUTED, or INCONCLUSIVE:
+   - SUPPORTED + registered source → write `[VERIFIED: Source]`, proceed
+   - SUPPORTED but judgment required → present to human (Tier 3), get YES, proceed
+   - REFUTED → correct or remove the claim; never act on a refuted hypothesis
+   - INCONCLUSIVE → mark `[PROVISIONAL]`; disclose to human; resolve before baseline
+
+### Claim Status Labels (inline markers in rules files)
+
+| Label | Meaning | Tier | Can act on? |
+|-------|---------|------|-------------|
+| `[VERIFIED: SourceName]` | Steps 1–7 complete; SUPPORTED; evidence recorded | 1 or 2 | ✅ Yes |
+| `[VERIFIED: empirical]` | Steps 1–7 complete; SUPPORTED by direct observation; human approved | 3 | ✅ Yes |
+| `[PROVISIONAL]` | Inconclusive result, or peer review pending | any | ⚠️ Disclose; resolve before baseline |
+| `[HYPOTHESIS]` | Stated but experiment not run | any | ❌ Never |
+| *(no label)* | Treated as `[HYPOTHESIS]` | any | ❌ Never |
+
+`[PROVISIONAL]` claims may remain in rules files as known-incomplete entries but CANNOT be acted upon for new work without completing the full lifecycle. All `[PROVISIONAL]` and `[HYPOTHESIS]` items must be resolved before any baseline capture.
+
+**Claim record format (inline annotation when writing a verified claim):**
+```
+[VERIFIED: BambuStudio] H2D gcode_flavor = marlin2
+  Evidence: BambuStudio resources/profiles/machine/Bambu Lab H2D.json → "gcode_flavor": "marlin2"
+  Falsification test: field value ≠ marlin2 would refute
+  Confirmed: 2026-03-10
+```
+
+### Three distinct paths to `ask_user` (all preserved — not redundant)
+
+| Path | Trigger | What the user is being asked |
+|------|---------|------------------------------|
+| **Tier 2 source registration** | Need an unregistered source to settle a claim (including web search) | "May I add [source] to the registry and use it to verify [X]?" |
+| **Tier 3 peer review** | Experiment ran; conclusion reached; no source can auto-validate | "Based on this evidence, I propose [conclusion]. Do you agree?" |
+| **Ask for Clarification** | No experiment possible; only the user knows the answer | "What is [domain-specific value] in this context?" |
+
+---
+
 ## Verification First - Before Any Work
+
+*This section provides the detailed mechanics for Steps 5 and 6 (Experiment + Evidence) of the Scientific Method Standard above.*
 
 **Critical Principle**: Never infer architecture, features, behavior, or implementation details from partial code patterns. **ALWAYS verify against actual source code before acting.** This applies to everything: documentation, code analysis, bug fixes, feature work, reverse engineering.
 
@@ -791,6 +883,8 @@ When adding or changing support for a protocol or API field that belongs to an e
 **If you cannot check all required boxes above, your verification is INSUFFICIENT.**
 
 ## Strict Execution Mode (Mandatory)
+
+*This section is the Scientific Method Standard applied to code changes: "Verify first" = Steps 1–6; "Do not speculate" = the falsifiability requirement; "Patch minimally" = conclusion from evidence.*
 
 Use this workflow for every non-trivial request:
 1. **Verify first**: gather concrete evidence with search and file-read tools before proposing or applying changes.
@@ -891,49 +985,53 @@ When a task spans multiple subtasks (e.g. research + write + run + analyze + upd
 
 ## Authoritative Sources
 
-Before starting any protocol, API, or telemetry work, **actively identify and establish a source hierarchy** for the specific device, vendor, or protocol at hand. Do not rely on a fixed pre-listed set of repositories — search for current sources using the categories below.
+This is the formal **Authoritative Sources Registry**. Every factual/technical claim in any rules file or agent decision must cite a registered entry. Claims citing unregistered sources are treated as `[HYPOTHESIS]`. New entries require user confirmation via `ask_user` (Tier 2 gate) before use.
 
-### Source categories (priority order)
+### Registry
 
-1. **Official vendor/manufacturer sources**
-   - Official open-source client(s), desktop app(s), SDK(s), or firmware published by the vendor
-   - Published protocol documentation, API references, or developer portals
-   - These are the highest-authority source for field semantics and intended behavior
-   - **For bpm/bpa work specifically**: `https://synman.github.io/bambu-printer-manager/` — official mkdocs-generated API reference for all public classes in `bambu-printer-manager` and `bambu-printer-app` (`BambuPrinter`, `BambuConfig`, `BambuState`, `BambuSpool`, `ActiveJobInfo`, `ProjectInfo`, `AMSUnitState`, `BambuDiscovery`, and more). This is the **primary** reference for any bpm/bpa method question. Consult it before reading installed package source code. Authoritative for method signatures, parameter semantics, return values, and behavior differences between printer models.
+| Source Name | URL | Scope | Tier | Status |
+|-------------|-----|-------|------|--------|
+| BambuStudio | `https://github.com/bambulab/BambuStudio` | Bambu Lab printers: GCode flavor, slicer profiles, machine configs, print settings | 1 | ACCEPTED |
+| ha-bambulab | `https://github.com/greghesp/ha-bambulab` | Bambu Lab printers: MQTT protocol, telemetry field semantics, HMS errors | 2 | ACCEPTED |
+| bpm/bpa official docs | `https://synman.github.io/bambu-printer-manager/` | bambu-printer-manager + bambu-printer-app public APIs — **primary** reference for all bpm/bpa method questions; consult before reading installed package source | 1 | ACCEPTED |
+| OpenBambuAPI | `https://github.com/Doridian/OpenBambuAPI` | Bambu Lab MQTT/FTP protocol reverse-engineering | 2 | ACCEPTED |
+| OASIS MQTT Spec | `https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html` | MQTT protocol standard | 3 | ACCEPTED |
+| IETF RFCs | `https://www.ietf.org/standards/rfcs/` | HTTP/TLS/FTP/SSDP standards | 3 | ACCEPTED |
+| Marlin firmware docs | `https://marlinfw.org/docs/gcode/` | Marlin GCode dialect commands and behavior | 1 | ACCEPTED |
+| Klipper docs | `https://www.klipper3d.org/G-Codes.html` | Klipper GCode dialect | 1 | ACCEPTED |
+| RepRap/Duet wiki | `https://reprap.org/wiki/G-code` | RepRap GCode dialect | 1 | ACCEPTED |
+| Hartley & Zisserman | ISBN 0521540518 — *Multiple View Geometry in Computer Vision* | Camera projection mathematics | 3 | ACCEPTED |
+| Zhang 2000 IEEE TPAMI | `https://doi.org/10.1109/34.888718` | Camera calibration methodology | 3 | ACCEPTED |
 
-2. **Platform and ecosystem integrations**
-   - Community integrations for platforms such as Home Assistant, Node-RED, or similar
-   - These frequently contain the best field-level documentation and edge-case handling derived from real-world usage
-   - Prefer widely-adopted integrations with active maintenance histories
+**Tier meaning:**
+- **Tier 1** — Official vendor/manufacturer source or peer-reviewed publication; highest authority
+- **Tier 2** — Community integration or reverse-engineering with active maintenance; high confidence
+- **Tier 3** — Canonical specification or academic reference; authoritative for its specific standard
 
-3. **Protocol and standard specifications**
-   - Authoritative specifications for the underlying protocol (e.g. OASIS MQTT spec, IETF RFCs for HTTP/TLS/FTP, Bluetooth SIG for BLE, IEEE for Wi-Fi)
-   - Canonical library documentation for protocol client libraries used in the project
+### Adding a new registry entry (Tier 2 gate)
 
-4. **Community and alternative implementations**
-   - Open-source forks, reimplementations, or alternative clients for the same device/protocol
-   - Useful for surfacing undocumented behavior, edge cases, and field semantics not covered in official docs
+A new source may not be used to support any claim until it is admitted to this registry. To propose one:
+1. Present the source (name, URL, scope) to the user via `ask_user`
+2. After explicit YES: add it to the registry table above
+3. Then proceed to use it to verify the claim (Steps 5–6 of the scientific method lifecycle)
 
-5. **Cross-language implementations**
-   - Independent implementations in a language different from the project (e.g. Node.js, Go, Rust, C#)
-   - Provide independent cross-verification of field interpretations and protocol behavior
+This also applies to web searches — a web search is a Tier 2 source access event. Get approval before searching.
 
-### How to establish the source hierarchy
+### How to discover candidate sources
 
-Before coding:
-1. Search GitHub for the vendor/device name to find official repos and popular community integrations.
-2. Check the vendor's developer portal or documentation site for published specs.
-3. Identify the most-starred or most-referenced community integration for the target platform.
-4. Confirm which sources represent **steady-state behavior** vs. **command acknowledgment** — they are not equivalent.
-5. Document the identified sources and their roles before beginning implementation.
+When no existing registry entry covers your claim:
+1. Search GitHub for the vendor/device/protocol name to find official repos and community integrations
+2. Check the vendor's developer portal for published specs
+3. For standard protocols (MQTT, HTTP, FTP), use the relevant IETF/OASIS/IEEE specification
+4. Confirm whether the candidate source reflects **steady-state behavior** vs. **command acknowledgment** — they are not equivalent
+5. Propose to the user via `ask_user` before using
 
 ### Authoritative source checklist
 
-- [ ] Did I identify at least one official vendor source?
-- [ ] Did I identify at least one community integration with active maintenance?
-- [ ] Did I identify the relevant protocol specification?
-- [ ] Did I confirm which source governs steady-state field values vs. transient acks?
-- [ ] Are my sources current (not stale forks or archived repos)?
+- [ ] Does my claim cite a registered source from the table above?
+- [ ] Is the cited source Tier 1 or 2 for this claim type?
+- [ ] Did I confirm whether the source reflects steady-state values vs. transient acks?
+- [ ] If the source is not yet registered, did I get user confirmation before using it?
 
 ## MCP Tool Reconnect (Mandatory)
 
@@ -1083,6 +1181,55 @@ The following operations produce commits without running `git commit` explicitly
 When spawning any sub-agent (via the `task` tool or otherwise) to perform work in a repo that has a project-level commit prohibition, you MUST include the prohibition verbatim in the sub-agent prompt. Sub-agents start in a clean context and do not inherit project-level rules. Failing to pass the prohibition is equivalent to committing yourself.
 
 For `bambu-printer-manager` specifically, always include this in any sub-agent prompt: *"You must not run `git commit` or `git push` in bambu-printer-manager under any circumstances."*
+
+## GCode Calibration Motion Safety (Mandatory)
+
+When generating GCode for any pre-print camera calibration sequence (or any agent-driven calibration that moves the toolhead or bed to known positions), the following safety protocol is **unconditional** — it applies to all printer families (CoreXY, bed-slinger) and all printer models.
+
+**Three inviolable rules:**
+
+1. **No XY (or bed-Y) travel at or near Z=0.** The nozzle must be at `Z_CLEARANCE` (≥5mm; default 10mm) before any XY or Y travel command is issued. This prevents the nozzle from dragging across the print surface, scratching PEI, or colliding with bed clips.
+
+2. **Z transitions only when fully stationary.** Never combine Z and XY/Y motion in a single G0 command. Always: reach XY/Y target → `M400` (confirmed full stop) → then change Z. Same for ascent: reach `Z_CLEARANCE` → `M400` → then travel.
+
+3. **Every movement path must be clear.** No obstruction may exist between the start and end of any single movement command. Pre-flight: user must confirm the bed is empty (no tools, clips, filament, partial prints) before any calibration GCode is issued. All inter-corner travel happens at `Z_CLEARANCE` so any left-on-bed object is cleared above.
+
+**Required safe motion pattern per corner:**
+```
+G0 X<x> Y<y>    ; travel at Z_CLEARANCE — path is unobstructed
+M400             ; full stop before any Z change
+G0 Z<capture>   ; descend ONLY after confirmed stationary
+M400             ; settle
+; CAPTURE FRAME
+G0 Z<clearance> ; ascend BEFORE any further XY/Y motion
+M400             ; confirmed at clearance before next command
+```
+
+**Default Z values:**
+- `Z_CLEARANCE` = 10mm (travel height; clears all clips and objects)
+- `Z_CAPTURE` = 2mm (capture height; nozzle visible but not touching)
+
+**Pre-flight wizard step (mandatory before issuing any calibration GCode):** Ask the user to confirm the bed is clear. Only proceed after explicit confirmation. This is the "do no harm" gate — no automated override.
+
+**Rule 4 — GCode must be flavor-compliant with the target printer.** Before generating any calibration GCode, determine the printer's GCode dialect and restrict the command set to commands verified as valid for that dialect. Never assume a command is universally supported. Additional requirements that apply regardless of flavor:
+- Explicitly set coordinate mode at the top of every calibration sequence — never rely on firmware power-on defaults or prior state. (`G90` = absolute, which is required for corner-position calibration.)
+- Include feedrate (`F` parameter) on every `G0`/`G1` move. Never rely on the last programmed feedrate — calibration sequences may be injected into an arbitrary firmware state.
+- Known safe calibration feedrates (Marlin/Bambu): `F3000` for XY/Y travel (50 mm/s), `F600` for Z moves (10 mm/s).
+
+**Flavor lookup (pre-built; extend as new families are validated — all entries must reach `[VERIFIED]` before calibration GCode is emitted):**
+
+| Printer family | GCode flavor | Claim status | Source | Verified calibration commands |
+|----------------|-------------|--------------|--------|-------------------------------|
+| Bambu H2D, A1, X1C, P1S, A1-mini, P1P | Marlin-derived | `[HYPOTHESIS]` | None yet | `G28`, `G90`, `G0 F<n>`, `M400` |
+| Marlin (generic) | Marlin | `[VERIFIED: Marlin firmware docs]` | `https://marlinfw.org/docs/gcode/` | `G28`, `G90`, `G0 F<n>`, `M400` |
+| Klipper | Klipper | `[VERIFIED: Klipper docs]` | `https://www.klipper3d.org/G-Codes.html` | `G28`, `G90`, `G0 F<n>`, `M400` |
+| RepRap Firmware (Duet) | RRF | `[VERIFIED: RepRap/Duet wiki]` | `https://reprap.org/wiki/G-code` | `G28`, `G90`, `G0 F<n>`, `M400` |
+
+**`[HYPOTHESIS]` gate (mandatory):** Any entry marked `[HYPOTHESIS]` MUST be resolved to `[VERIFIED]` before calibration GCode is emitted for that printer family. Resolution procedure: inspect the relevant BambuStudio machine profile (registered source, Tier 1) for `gcode_flavor`; present finding to user; after confirmation, update entry to `[VERIFIED: BambuStudio]`.
+
+For any printer not in this table, look up the flavor before generating GCode. Do not emit a command whose behavior in that flavor is unverified.
+
+This rule is self-scaling: it applies identically to H2D (CoreXY, nozzle XY, bed Z), A1 (bed-slinger, nozzle X, bed Y, nozzle Z), and any future printer family. The safe motion pattern is the same regardless of kinematics.
 
 ## Security & Privacy (Mandatory)
 

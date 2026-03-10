@@ -591,7 +591,6 @@ The following BPM methods are **intentionally not** exposed as MCP tools or HTTP
 | `BambuPrinter.pause_session()` / `resume_session()` | **A** | Internal session lifecycle methods called by the MCP `session_manager` within `pause_mqtt_session` / `resume_mqtt_session`. Not invoked directly by agents. |
 | `BambuPrinter.printer_state` property | **A** | Internal state accessor returning the live `BambuState`. Accessed by all MCP state tools; results surfaced via `get_printer_state()` and targeted tools. No standalone tool needed. |
 | `BambuPrinter.active_job_info` property | **A** | Internal job accessor returning the live `ActiveJobInfo`. Results surfaced via `get_job_info()`, `get_print_progress()`, `get_current_job_project_info()`. No standalone tool needed. |
-| `BambuPrinter.cached_sd_card_contents` / `cached_sd_card_3mf_files` properties | **A** | Internal SD card cache accessors. Results surfaced via `list_sdcard_files()` and `refresh_sdcard()`. No standalone tool needed. |
 | `BambuPrinter.nozzle_diameter` (deprecated) | **A** | `@deprecated` — replacement is `printer_state.active_nozzle.diameter_mm`, which is covered by `get_nozzle_info()`. Excluded per deprecated-with-replacement rule. |
 | `BambuPrinter.nozzle_type` (deprecated) | **A** | `@deprecated` — replacement is `printer_state.active_nozzle.material`, which is covered by `get_nozzle_info()`. Excluded per deprecated-with-replacement rule. |
 
@@ -1132,3 +1131,42 @@ All of the following, in order:
 4. **Verification carried forward** — Stage 6 pre-fix confirmation + post-fix verification results satisfy Stage 7. Reproduce them here in the closing comment. If Stage 6 was skipped or incomplete, do not close the issue — rerun Stage 6 first.
 5. GitHub issue: close only after step 4 is satisfied. The closing comment must include: interface queried, before value, after value.
 6. `bambu-rules` sync — push updated project rules to remote mirror
+
+---
+
+## Bambu GCode Flavor — Camera Calibration Commands (Mandatory)
+
+**Claim status: `[HYPOTHESIS]`** — The assertion that Bambu Lab printers use a Marlin-derived GCode flavor has not yet been verified against a registered authoritative source. Per the Scientific Method Standard (global rules), this entry MUST be resolved to `[VERIFIED]` before calibration GCode is emitted for any Bambu printer. Resolution: inspect BambuStudio machine profiles (registered Tier 1 source) for `gcode_flavor` field; present finding to user; update this section after confirmation.
+
+The following applies specifically to any agent-generated GCode for pre-print camera calibration sequences issued via `send_gcode()` or the HTTP `POST /api/send_gcode` route.
+
+**Command set for calibration (all Bambu models — pending `[VERIFIED]` status):**
+
+| Command | Purpose | Notes |
+|---------|---------|-------|
+| `G28` | Home all axes | Z homes first in Bambu firmware — safe starting point |
+| `G90` | Set absolute coordinate mode | Must be issued explicitly at calibration start; never assume prior state |
+| `G0 X<n> Y<n> F<n>` | Rapid XY move | Always include `F`; Bambu accepts mm/min (standard Marlin units) |
+| `G0 Z<n> F<n>` | Rapid Z move | Always include `F`; separate command from XY — never combined |
+| `M400` | Wait for moves to complete | Mandatory before every Z transition and every frame capture |
+
+**Safe calibration feedrates (pending `[VERIFIED]` status):**
+- `F3000` — XY/Y travel (50 mm/s): fast enough to be practical, slow enough to be safe
+- `F600` — Z moves (10 mm/s): conservative descent/ascent; prevents nozzle crash from feedrate overshoot
+
+**Coordinate system:** Always `G90` (absolute). Corner positions are expressed as absolute machine coordinates from the Bambu bed origin. Never use `G91` (relative) in a calibration sequence — position errors accumulate and are not recoverable without rehoming.
+
+**Confirmed pattern from `print_control.py`:** `G91\nG0 X10\nG90` demonstrates that Bambu firmware correctly handles relative-then-back-to-absolute patterns if ever needed for auxiliary moves. This is **not used** in calibration sequences (which are always absolute), but confirms `G91`/`G90` mode switching works as expected on all Bambu models.
+
+**Complete safe calibration sequence preamble (required at top of every generated sequence):**
+```gcode
+G28          ; home all axes — firmware handles safe homing order
+M400         ; confirmed stopped
+G90          ; absolute coordinate mode — explicit, never assumed
+G0 Z10 F600  ; lift to clearance height before any XY travel
+M400         ; confirmed at clearance
+```
+
+**Do not use:** `G1` (controlled-rate feed) is not necessary for calibration moves — `G0` (rapid move) is the correct command. Do not use firmware-specific extensions (e.g., Bambu's `M622`, AMS commands) in calibration sequences — use only the verified command set above.
+
+This section is the Bambu-specific extension of the global "GCode Calibration Motion Safety" rule. The global rule governs structure and safety; this section governs the exact command syntax for Bambu printers.
