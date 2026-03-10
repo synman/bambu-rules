@@ -498,19 +498,17 @@ time.sleep(2)
 ```
 Credentials via `secrets.py`: `bambu-a1-printer_ip`, `bambu-a1-printer_access_code`, `bambu-a1-printer_serial` (same pattern for h2d).
 
-**Printer rename MQTT message**: `{"update": {"name": "<new name>", "sequence_id": "0"}}` — published to `device/{serial}/request`. Printer responds with `{"update": {"name": "...", "reason": "success", "result": "success", "sequence_id": "0"}}`. The container logs this as `WARNING: unknown message type` — no handler exists for `update` message type.
+**Printer rename — container behavior**: The container logs `WARNING: unknown message type` when the printer ACKs a rename command — no handler exists for the `update` message type. This is expected and harmless. Raw MQTT payload format is documented in bpm rules.
 
 **SSDP discovery (port 2021)** `[VERIFIED: bpm source — bambudiscovery.py:153, sock.bind(("", 2021))]`: Printers broadcast on UDP port 2021. Use `BambuDiscovery` or bind directly. Key fields: `dev_name`, `dev_version`, `location` (printer IP), `dev_bind`, `dev_connect`. The `BambuDiscovery` class deduplicates by USN — for monitoring changes, bind the socket directly and compare fields across broadcasts. `DiscoveredPrinter.fromData()` parses raw UDP payloads.
 
-**H2D firmware upgrade state fields** (in `push_status`) `[VERIFIED: BambuStudio DevDefs.h + DevUpgrade.cpp — confirmed 2026-03-10]`: `upgrade_state.dis_state` (integer): `0`=no update available, `1`=update available, `2`=upgrading in progress, `3`=finished (success or fail). `upgrade_state.status` (string): in-progress values = `DOWNLOADING`, `FLASHING`, `UPGRADE_REQUEST`, `PRE_FLASH_START`, `PRE_FLASH_SUCCESS`; finished values = `UPGRADE_SUCCESS`, `DOWNLOAD_FAIL`, `FLASH_FAIL`, `PRE_FLASH_FAIL`, `UPGRADE_FAIL`. Note: `FLASH_START` is **NOT** a valid status string — prior claim was incorrect. `upgrade_state.progress` (0–100), `upgrade_state.module` (`ap` = main Linux image), `upgrade_state.message`, `upgrade_state.err_code` (0=success, -1=download fail, -2=verify fail, -3=flash fail, -4=printing).
+**H2D firmware upgrade state fields** — raw MQTT `upgrade_state.*` protocol fields are documented in bpm rules. bpa exposes only the already-parsed `firmware_version` string (from `GET /api/printer_info`). Always call `trigger_printer_refresh` after a printer reboot before reading `firmware_version` — the cached value is stale until refreshed.
 
-**trigger_printer_refresh**: `GET /api/trigger_printer_refresh` forces the container to re-query the printer. Always call this after a printer reboot (firmware upgrade, etc.) before reading `firmware_version` — the cached value is stale until refreshed.
+**trigger_printer_refresh**: `GET /api/trigger_printer_refresh` forces the container to re-query the printer.
 
 ## Integration Points
 
-**MQTT Topics** `[VERIFIED: ha-bambulab bambu_client.py:613-624]`: Commands sent to `device/{serial}/request` namespace. Telemetry (including push_status updates) subscribed via `device/{serial}/report` only. Note: "push" refers to message types within the report topic, not a separate subscription.
-
-**FTPS Operations**: IoTFTPSClient handles FTPS file transfers. Used for 3MF uploads via `src/bpm/bambuprinter.py`.
+Raw MQTT protocol details (topics, payload formats, FTPS) are documented in bpm rules. bpa works exclusively through bpm's parsed state — it does not subscribe to MQTT or perform FTPS directly.
 
 **External Dependencies**:
 - `paho-mqtt`: MQTT client library

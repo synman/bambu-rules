@@ -336,6 +336,10 @@ The **only** legitimate reason to instantiate `BambuPrinter` directly is to send
 
 **MQTT Topics** `[VERIFIED: ha-bambulab bambu_client.py:613-624]`: Commands sent to `device/{serial}/request` namespace. Telemetry (including push_status updates) subscribed via `device/{serial}/report` only. Note: "push" refers to message types within the report topic, not a separate subscription.
 
+**Printer rename MQTT payload** `[VERIFIED: empirical — confirmed via send_anything() test + printer ACK]`: Command: `{"update": {"name": "<new name>", "sequence_id": "0"}}` — published to `device/{serial}/request`. Printer responds: `{"update": {"name": "...", "reason": "success", "result": "success", "sequence_id": "0"}}`. bpm currently has no handler for the `update` message type — the response is logged as `WARNING: unknown message type`; this is expected and harmless.
+
+**Firmware upgrade state fields in `push_status`** `[VERIFIED: BambuStudio DevDefs.h + DevUpgrade.cpp — confirmed 2026-03-10]`: bpm currently parses `firmware_version` and `ams_firmware_version` only (from `push_status.upgrade_state.new_ver_list`). The full `upgrade_state` sub-object is **not yet parsed by bpm** — raw protocol knowledge documented here for future implementation: `upgrade_state.dis_state` (int): `0`=no update available, `1`=available, `2`=upgrading in progress, `3`=finished. `upgrade_state.status` (string): in-progress = `DOWNLOADING`, `FLASHING`, `UPGRADE_REQUEST`, `PRE_FLASH_START`, `PRE_FLASH_SUCCESS`; finished = `UPGRADE_SUCCESS`, `DOWNLOAD_FAIL`, `FLASH_FAIL`, `PRE_FLASH_FAIL`, `UPGRADE_FAIL`. `upgrade_state.progress` (0–100), `upgrade_state.module` (`ap`=main Linux image), `upgrade_state.message`, `upgrade_state.err_code` (0=success, -1=download fail, -2=verify fail, -3=flash fail, -4=printing). Note: `FLASH_START` is **NOT** a valid status string.
+
 **FTPS Operations**: IoTFTPSClient handles FTPS file transfers. Used for 3MF uploads via `src/bpm/bambuprinter.py`.
 
 **External Dependencies**:
