@@ -80,6 +80,8 @@ Required findings statement: *"Coverage audit complete: N bpm items checked, M g
 | Dual-layer completeness | Every route in `api_server.py` appears in the appropriate `knowledge/http_api_*.py` file. Routes added/changed since prior baseline are mandatory; full scan preferred. |
 | Discovery route completeness | Any parameter a caller cannot discover independently has a corresponding discovery route (e.g. `GET /api/default_printer` for the `printer` resolver). |
 | Type I — UI traceability | All distinct stream view UI elements in `camera/mjpeg_server.py` are documented in a knowledge module or tool docstring. |
+| Rules↔knowledge consistency | For any fact (threshold value, enum semantic, stage code, scale description) documented in both a rules file and a knowledge module TEXT block, the values and descriptions match exactly. Sample at minimum: humidity index scale, stage codes, spaghetti score thresholds. |
+| Proactive guidance completeness | Every alert type in `behavioral_rules/alerts` TEXT has a documented recommended agent action (not just field descriptions). |
 
 Required findings statement: *"MCP↔HTTP contract audit complete: N items checked, M failures found, all resolved. Type I: P UI elements checked, Q undocumented, all resolved."*
 
