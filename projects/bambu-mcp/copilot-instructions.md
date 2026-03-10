@@ -378,6 +378,18 @@ Type H gaps may NOT be resolved by exclusion table entries — if the field is i
 
 **Audit agents must check for Type H gaps** by comparing every field of every serialized dataclass against the tool docstring and knowledge table. Finding a field in `_serialize()` output that has no docstring mention and no knowledge table row is a Type H gap regardless of whether the field seems obvious.
 
+**UI element traceability gaps (Type I gaps):**
+A stream view UI element (health panel section, HUD row, endpoint like `/annotated`, `/factors_radar`, `/status`, `/job_state`, image panel, badge, sparkline, etc.) that has no corresponding entry in a knowledge module or tool docstring is a **Type I gap**. An agent reading only MCP documentation would have no way to know the element exists, what data it shows, or how to interpret it.
+
+Type I gaps must be resolved by:
+- Adding a description of the UI element and its data source to `knowledge/behavioral_rules_camera.py` or an appropriate knowledge module, OR
+- Documenting it in the relevant tool's docstring (e.g. `start_stream()` / `view_stream()` docstring already lists HUD components — add missing items there)
+
+Type I gaps are **Medium severity**: the stream view works without documentation, but agents cannot guide users through what they're seeing or interpret health/status data correctly.
+
+**Baseline pre-flight includes a UI Traceability check (mandatory):**
+The gap analysis report (`/tmp/bpm-mcp-gap-report.html`) must include a **UI Traceability** section listing all stream view UI elements and their knowledge/docstring coverage status. Any Type I gap found during baseline pre-flight must be either resolved or added to the intentional exclusions table before baseline capture.
+
 **Knowledge obligation (mandatory for all covered items):**
 Every item reachable via an MCP tool or HTTP route MUST be documented in the appropriate `knowledge/api_reference_*.py` or `knowledge/enums_*.py` module. Coverage without documentation is an incomplete implementation.
 
@@ -486,11 +498,12 @@ The following procedure is **required** during baseline pre-flight step 2. A del
 
 **How to run:**
 1. Launch a `task` agent (explore or general-purpose) with this prompt (adapt paths as needed):
-   > "Audit the installed bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`. Inspect all public methods, fields, properties, and attributes in `bambuprinter.py`, `bambustate.py`, `bambuconfig.py`, `bambuspool.py`, `bambuproject.py`, `bambutools.py`. For method semantics, consult the official bpm documentation at `https://synman.github.io/bambu-printer-manager/` before evaluating coverage. Cross-check each item against the mcp's MCP tools (`tools/*.py`) and HTTP routes (`api_server.py`). Report all items not covered by at least one access path and not listed in the intentional non-gaps table in `.github/copilot-instructions.md`. **Additionally, perform a Type H audit:** for every MCP tool that calls `_serialize()` on a bpm dataclass, read the actual dataclass field names from the installed bpm source (`bambustate.py`, `bambuspool.py`, `bambuproject.py`, `bambuconfig.py`), then compare every field name against (a) the tool's Python docstring and (b) the corresponding knowledge table in `knowledge/api_reference_*.py`. Report any field that is present in the serialized output but absent from the docstring or knowledge table (MISSING), any field documented under a name that differs from the actual dataclass field name (WRONG NAME), and any field documented in the knowledge table or docstring that does not exist as a real dataclass field (PHANTOM)."
-2. The agent must produce a structured findings report: gap type (A/B/C/D/E/F/G/H), affected item, and resolution.
+   > "Audit the installed bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`. Inspect all public methods, fields, properties, and attributes in `bambuprinter.py`, `bambustate.py`, `bambuconfig.py`, `bambuspool.py`, `bambuproject.py`, `bambutools.py`. For method semantics, consult the official bpm documentation at `https://synman.github.io/bambu-printer-manager/` before evaluating coverage. Cross-check each item against the mcp's MCP tools (`tools/*.py`) and HTTP routes (`api_server.py`). Report all items not covered by at least one access path and not listed in the intentional non-gaps table in `.github/copilot-instructions.md`. **Additionally, perform a Type H audit:** for every MCP tool that calls `_serialize()` on a bpm dataclass, read the actual dataclass field names from the installed bpm source (`bambustate.py`, `bambuspool.py`, `bambuproject.py`, `bambuconfig.py`), then compare every field name against (a) the tool's Python docstring and (b) the corresponding knowledge table in `knowledge/api_reference_*.py`. Report any field that is present in the serialized output but absent from the docstring or knowledge table (MISSING), any field documented under a name that differs from the actual dataclass field name (WRONG NAME), and any field documented in the knowledge table or docstring that does not exist as a real dataclass field (PHANTOM). **Additionally, perform a Type I (UI Traceability) audit:** read `camera/mjpeg_server.py` and enumerate every distinct UI element in the stream view (health panel sections, HUD rows, image panels, endpoint-driven images like `/annotated`, `/factors_radar`, `/job_state`, badge row, FPS panel, etc.). For each, check whether it is documented in any `knowledge/behavioral_rules_camera.py` entry or in the `start_stream()` / `view_stream()` / `analyze_active_job()` tool docstrings. Report any element with no knowledge or docstring coverage as a Type I gap."
+2. The agent must produce a structured findings report: gap type (A/B/C/D/E/F/G/H/I), affected item, and resolution.
 3. Resolve all High-severity gaps (Types A, C, D, F) before proceeding.
-4. For each Medium/Low item (Types B, E, G, H): add to the intentional exclusions table or add coverage.
+4. For each Medium/Low item (Types B, E, G, H, I): add to the intentional exclusions table or add coverage.
 5. Output the required findings statement (see global rules). **Baseline capture is blocked until it appears.**
+6. The gap analysis HTML report (`/tmp/bpm-mcp-gap-report.html`) must include a **UI Traceability** section listing all stream view UI elements and their knowledge/docstring coverage status. Generate or regenerate the report after resolving all Type I findings.
 
 **Serialized field name verification (mandatory — applies to all documentation work):**
 When writing or updating a tool docstring or knowledge table that describes fields returned by `_serialize()`, field names MUST be taken from the actual dataclass definition in the installed bpm source. Do NOT:
