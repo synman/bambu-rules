@@ -786,6 +786,8 @@ All seven steps must complete in order:
   Confirmed: 2026-03-10
 ```
 
+**Governance example integrity rule (mandatory):** All examples used in governance documentation (claim records, format templates, inline illustrations) must themselves use only `[VERIFIED]` values. Using a placeholder or hypothetical value in an example is permitted only if it is explicitly marked with `«placeholder»` (e.g., `«your-value-here»`). An example that uses an unverified value without marking is itself an unverified claim and will be caught by future audits.
+
 ### Three distinct paths to `ask_user` (all preserved — not redundant)
 
 | Path | Trigger | What the user is being asked |
@@ -992,7 +994,7 @@ This is the formal **Authoritative Sources Registry**. Every factual/technical c
 
 | Source Name | URL | Scope | Tier | Status |
 |-------------|-----|-------|------|--------|
-| BambuStudio | `https://github.com/bambulab/BambuStudio` | Bambu Lab printers: GCode flavor, slicer profiles, machine configs, print settings | 1 | ACCEPTED |
+| BambuStudio | `https://github.com/bambulab/BambuStudio` | Bambu Lab printers: GCode flavor, slicer profiles, machine configs, print settings; **also authoritative for firmware upgrade state enums (`DevDefs.h`), MQTT device state fields (`DevUpgrade.cpp`), and all device-side C++ logic under `src/slic3r/GUI/DeviceCore/`**. Search BambuStudio *first* for any Bambu-specific firmware/device state claim before ha-bambulab. | 1 | ACCEPTED |
 | ha-bambulab | `https://github.com/greghesp/ha-bambulab` | Bambu Lab printers: MQTT protocol, telemetry field semantics, HMS errors | 2 | ACCEPTED |
 | bpm/bpa official docs | `https://synman.github.io/bambu-printer-manager/` | bambu-printer-manager + bambu-printer-app public APIs — **primary** reference for all bpm/bpa method questions; consult before reading installed package source | 1 | ACCEPTED |
 | OpenBambuAPI | `https://github.com/Doridian/OpenBambuAPI` | Bambu Lab MQTT/FTP protocol reverse-engineering | 2 | ACCEPTED |
