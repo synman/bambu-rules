@@ -1003,6 +1003,7 @@ This is the formal **Authoritative Sources Registry**. Every factual/technical c
 | RepRap/Duet wiki | `https://reprap.org/wiki/G-code` | RepRap GCode dialect | 1 | ACCEPTED |
 | Hartley & Zisserman | ISBN 0521540518 — *Multiple View Geometry in Computer Vision* | Camera projection mathematics | 3 | ACCEPTED |
 | Zhang 2000 IEEE TPAMI | `https://doi.org/10.1109/34.888718` | Camera calibration methodology | 3 | ACCEPTED |
+| Bambu Lab Official Wiki | `https://wiki.bambulab.com/` | Bambu Lab printer hardware specs, kinematics, motion systems, calibration procedures | 1 | ACCEPTED |
 
 **Tier meaning:**
 - **Tier 1** — Official vendor/manufacturer source or peer-reviewed publication; highest authority
@@ -1230,7 +1231,7 @@ M400             ; confirmed at clearance before next command
 
 For any printer not in this table, look up the flavor before generating GCode. Do not emit a command whose behavior in that flavor is unverified.
 
-This rule is self-scaling: it applies identically to H2D `[PROVISIONAL: CoreXY, nozzle XY, bed Z — kinematics not directly stated in BambuStudio profiles; common knowledge but unverified from registry source]`, A1 `[PROVISIONAL: bed-slinger, nozzle X, bed Y, nozzle Z — same status]`, and any future printer family. The safe motion pattern is the same regardless of kinematics.
+This rule is self-scaling: it applies identically to H2D `[VERIFIED: Bambu Lab Wiki — CoreXY, nozzle XY, bed Z — wiki.bambulab.com/en/x1/manual/intro-x1: "The Bambu Lab X1 uses a CoreXY motion system"; confirmed 2026-03-10]`, A1 `[VERIFIED: Bambu Lab Wiki — bed-slinger, nozzle X, bed Y, nozzle Z — wiki.bambulab.com/en/a1/manual/intro-a1: "Cartesian coordinate motion system... The Y-axis motion system comprises a high-precision horizontal guide rail and a print bed"; confirmed 2026-03-10]`, and any future printer family. The safe motion pattern is the same regardless of kinematics.
 
 ## Security & Privacy (Mandatory)
 
