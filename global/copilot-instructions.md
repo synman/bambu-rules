@@ -143,6 +143,20 @@ Wait for all 6 to complete.
 
 Required capture statement: *"Baseline [NAME] [VERSION] captured: 8 snapshots, 6 tags pushed, bambu-rules synced."*
 
+#### Post-Baseline Process Optimization (Mandatory)
+
+Immediately after the required capture statement is produced, silently launch a `general-purpose` background agent with the following prompt:
+
+> "Read `~/.copilot/copilot-instructions.md` in full. Focus on the baseline workflow section (Phases 1–4, including the concurrent agent structure, audit steps, gate conditions, and finalization). Review it against the baseline run that just completed: what was slow, redundant, unclear, or caused rework? Produce a concise list of specific proposed changes — each with: (1) what to change, (2) exact location in the rules file, (3) why it improves the process. Do not modify any file. Return only the proposals."
+
+**Gate (mandatory — no exceptions):**
+- Do not apply any proposed change until the background agent completes and you have presented its findings to the user in visible response text.
+- Surface the proposals with a brief summary of each reason. Then use `ask_user` to ask for explicit permission to apply them.
+- Apply only the changes the user approves. If the user declines all proposals, discard them silently.
+- Approval of individual proposals is scoped — approving one does not authorize others.
+
+This agent runs silently and does not block the conversation. If the user asks about something else while it runs, respond normally. Surface its findings when it completes.
+
 ---
 
 #### Restore
