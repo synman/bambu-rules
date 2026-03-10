@@ -672,6 +672,25 @@ An audit that finds something and leaves it only in a checklist or session note 
 
 **This rule is self-applying:** The absence of this rule was itself identified as a gap in an audit. Writing this rule is what closes that gap.
 
+## Multi-Step Sequence Completion (Mandatory)
+
+When completing a step that is part of a known multi-step sequence (pre-baseline audit, gap resolution, coverage work, PR merge checklist), **the turn is not done until the sequence advances as far as it can go without requiring user input.**
+
+**Hard requirements:**
+- After completing a work step: immediately assess whether the next step can be entered in the same turn.
+- If yes: proceed to it without waiting for a "what's next?" prompt.
+- If no (blocked by user action, external dependency, or confirmation gate): state the blocker explicitly and stop. Do not silently finish and leave the user to rediscover where things stand.
+- **Completion artifacts are mandatory:** If the sequence has a verification artifact (audit report, test run output, pre-flight checklist), generate it in the same turn as the work — not on the next user prompt.
+
+**The specific failure mode this prevents:** Agent completes gap resolution work → commits → stops. User asks "where is the report?" → report generated → user asks "what's next?" → pre-flight run → user discovers blockers. All three of those extra turns should have been one.
+
+**Applied to the coverage audit / baseline workflow:**
+After resolving any audit gaps (Type B documentation, Type C fixes, route additions, exclusions table updates):
+1. Regenerate the gap report (`/tmp/bpm-mcp-gap-report.html` + session markdown) — mandatory in the same turn.
+2. Run pre-flight: check all repos for uncommitted changes and unpushed commits.
+3. If clean and all gaps resolved: proceed directly to the `ask_user` baseline confirmation gate.
+4. If blocked: report exactly what is blocking. Stop.
+
 ## Authoritative Sources
 
 Before starting any protocol, API, or telemetry work, **actively identify and establish a source hierarchy** for the specific device, vendor, or protocol at hand. Do not rely on a fixed pre-listed set of repositories — search for current sources using the categories below.
