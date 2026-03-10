@@ -992,10 +992,10 @@ When work involves analysis, computation, script writing + execution, research, 
 - Any task where the useful output is a final artifact (image, JSON, table, solved parameters) rather than a stream of intermediate decisions
 - Multi-step computational pipelines that can run autonomously without branching on user input
 
-**Meaningful agent names (mandatory):**
-Every task agent MUST be given a descriptive `description` parameter that names what it does — not a generic placeholder. This makes `list_agents` readable and parallel agent fleets trackable.
-- Good: `"H2D camera projection"`, `"A1 corner annotation"`, `"bpm coverage audit"`, `"projection result overlay"`
-- Bad: `"task"`, `"agent"`, `"analysis"`, `"script"`
+**Meaningful agent names (mandatory — applies to ALL task tool calls, sync and background):**
+Every task agent MUST be given a descriptive `description` parameter that names what it does — not a generic placeholder. Keep it to **3-5 words** (per tool spec). This makes `list_agents` readable and parallel agent fleets trackable.
+- Good: `"H2D camera projection"`, `"A1 corner annotation"`, `"BPM coverage audit"`, `"MCP↔HTTP contract audit"`
+- Bad: `"task"`, `"agent"`, `"analysis"`, `"script"`, `"running agent"`, `"helper"`
 
 **Pre-launch context inventory (mandatory for non-trivial tasks):**
 Before launching any background agent, collect ALL inputs it will need in the current turn:
