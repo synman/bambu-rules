@@ -55,6 +55,8 @@ cp ~/bambu-mcp/.github/copilot-instructions.md             ~/.copilot/baselines/
 cp ~/bambu-fw-fetch/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.bambu-fw-fetch.copilot-instructions.md
 cp ~/GitHub/bambu-mqtt/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-mqtt.copilot-instructions.md
 cp ~/GitHub/webcamd/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.webcamd.copilot-instructions.md
+# Archive the final gap audit report with the baseline (mandatory)
+cp ~/.copilot/session-state/*/files/bpm-mcp-gap-report.md  ~/.copilot/baselines/${NAME}.bpm-mcp-gap-report.md
 # Tag all in-scope repos at their captured SHAs (bpm excluded — Write Scope Lock)
 git -C ~/bambu-printer-app   tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-printer-app   push origin "${VERSION}"
 git -C ~/bambu-mcp           tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-mcp           push origin "${VERSION}"
@@ -62,7 +64,7 @@ git -C ~/bambu-fw-fetch      tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -
 git -C ~/GitHub/bambu-mqtt   tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-mqtt   push origin "${VERSION}"
 git -C ~/GitHub/webcamd      tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/webcamd      push origin "${VERSION}"
 git -C ~/GitHub/bambu-rules  tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-rules  push origin "${VERSION}"
-# Then update Known Baselines table below, and sync to bambu-rules.
+# Then update Known Baselines table below, and sync to bambu-rules (includes gap report).
 
 # --- RESTORE from local baselines ---
 # 1. Restore rules file
