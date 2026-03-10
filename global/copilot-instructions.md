@@ -11,6 +11,13 @@ To revert everything to a named baseline, restore the rules file AND reset all w
 **Baseline confirmation gate (mandatory):** Before starting any baseline capture:
 1. **Generate and open the gap analysis report.** Render the most recent gap report file (`~/.copilot/session-state/*/files/bpm-mcp-gap-report.md`) to HTML using Python's `markdown` library (with `tables` and `fenced_code` extensions) and a fully styled HTML wrapper, write the output to `/tmp/bpm-mcp-gap-report.html`, then `open` it. This step is mandatory — do not skip it, do not ask the user if they want it, just generate and open it every time.
 
+   **Required report header (mandatory — must appear at the top of the rendered HTML, above all audit content):**
+   - **Date/time:** the `current_datetime` value from the agent prompt verbatim (ISO 8601, e.g. `2026-03-10T02:40:24.422Z`). Never infer, approximate, or fabricate. A report with a wrong or missing timestamp is invalid.
+   - **Targeted baseline:** name, version (e.g. `v1.0.2`), and description as planned in `plan.md`
+   - **Repo SHAs:** a table of all in-scope repos with branch and current HEAD SHA (run `git -C <repo> rev-parse HEAD` for each)
+   - **Audit version** and **BPM package path**
+   - These fields must be present even if the audit finds zero gaps. They are the provenance record for the baseline.
+
    **Required HTML styling (mandatory — plain/minimal CSS is not acceptable):**
    - GitHub dark theme: `background: #0d1117`, body text `#c9d1d9`, max-width 1100px centered
    - `h1`: `#58a6ff`; `h2`: `#f0f6fc` with bottom border; `h3`: `#79c0ff`
@@ -18,7 +25,6 @@ To revert everything to a named baseline, restore the rules file AND reset all w
    - Severity color-coding: cells containing "High" → `#ff7b72` bold; "Medium" → `#f5a623` bold; bold **0** values → `#3fb950`
    - Resolved/excluded rows: background `#0e2a1a`
    - `code`: background `#161b22`, color `#79c0ff`, border `#30363d`; `pre`: same background with border-radius
-   - **Report header must use `current_datetime` verbatim** — never infer or fabricate a date from training data
 2. **Then use `ask_user`** to confirm the user wants the baseline captured right now. Do not infer intent from task-completion language, praise, or phrasing like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer to a direct confirmation question.
 
 **Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
