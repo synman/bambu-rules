@@ -89,7 +89,6 @@ cp ~/GitHub/bambu-rules/baselines/<baseline-name>.bambu-printer-manager.copilot-
 | `2026-03-08-post-audit-clean` | 2026-03-08 | — | Post-audit: removed hardcoded version line from mcp rules; removed duplicated Session Start Protocol from bpa rules (no-duplication fix) |
 | `2026-03-08-naming-convention` | 2026-03-08 | — | Added baseline naming convention rule (no current-state/latest names) to global rules |
 | `2026-03-09-coverage-wording` | 2026-03-09 | **v1.0.0** | BPM MCP Coverage Standard wording tightened (explicitly names api_server.py); naming-convention mcp snapshot removed from baselines |
-| `ams-pause-resume-knowledge` | 2026-03-10 | **v1.0.1** | AMS/pause-resume knowledge documented; resume command decision table; protocol MQTT command structures; gitignore clean |
 
 **`2026-03-08-whitelist-baseline` — repo SHAs:**
 | Repo | Branch | SHA |
@@ -198,16 +197,6 @@ The corresponding checkpoint (session history, findings, decisions) is at:
 | `~/bambu-printer-manager` | `devel` | `b69763466662d8d04a63a65f429bdf761a18417a` |
 | `~/bambu-printer-app` | `main` | `46ff7bb4ff7d9ec1f6b19e573e90cd85973eff7e` |
 | `~/bambu-mcp` | `main` | `f996b2636ae49d09fa0a001d3e4a9135599ece70` |
-| `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
-| `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
-| `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
-
-**`ams-pause-resume-knowledge` — repo SHAs:**
-| Repo | Branch | SHA |
-|------|--------|-----|
-| `~/bambu-printer-manager` | `devel` | `d72faf45db5e2b581ffc9a2410e2fc495a208da6` |
-| `~/bambu-printer-app` | `main` | `a5d01a6b833c92ac4eb00b9704c25173add7b67b` |
-| `~/bambu-mcp` | `main` | `1aec2739a0ff15d61681859c4765c96d9a2cb57b` |
 | `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
 | `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
 | `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
