@@ -334,7 +334,7 @@ The **only** legitimate reason to instantiate `BambuPrinter` directly is to send
 
 ## Integration Points
 
-**MQTT Topics**: Commands sent to `device/{serial}/request` namespace. Telemetry (including push_status updates) subscribed via `device/{serial}/report` only. Note: "push" refers to message types within the report topic, not a separate subscription.
+**MQTT Topics** `[VERIFIED: ha-bambulab bambu_client.py:613-624]`: Commands sent to `device/{serial}/request` namespace. Telemetry (including push_status updates) subscribed via `device/{serial}/report` only. Note: "push" refers to message types within the report topic, not a separate subscription.
 
 **FTPS Operations**: IoTFTPSClient handles FTPS file transfers. Used for 3MF uploads via `src/bpm/bambuprinter.py`.
 

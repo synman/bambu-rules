@@ -500,15 +500,15 @@ Credentials via `secrets.py`: `bambu-a1-printer_ip`, `bambu-a1-printer_access_co
 
 **Printer rename MQTT message**: `{"update": {"name": "<new name>", "sequence_id": "0"}}` — published to `device/{serial}/request`. Printer responds with `{"update": {"name": "...", "reason": "success", "result": "success", "sequence_id": "0"}}`. The container logs this as `WARNING: unknown message type` — no handler exists for `update` message type.
 
-**SSDP discovery (port 2021)**: Printers broadcast on UDP port 2021. Use `BambuDiscovery` or bind directly. Key fields: `dev_name`, `dev_version`, `location` (printer IP), `dev_bind`, `dev_connect`. The `BambuDiscovery` class deduplicates by USN — for monitoring changes, bind the socket directly and compare fields across broadcasts. `DiscoveredPrinter.fromData()` parses raw UDP payloads.
+**SSDP discovery (port 2021)** `[VERIFIED: bpm source — bambudiscovery.py:153, sock.bind(("", 2021))]`: Printers broadcast on UDP port 2021. Use `BambuDiscovery` or bind directly. Key fields: `dev_name`, `dev_version`, `location` (printer IP), `dev_bind`, `dev_connect`. The `BambuDiscovery` class deduplicates by USN — for monitoring changes, bind the socket directly and compare fields across broadcasts. `DiscoveredPrinter.fromData()` parses raw UDP payloads.
 
-**H2D firmware upgrade state fields** (in `push_status`): `upgrade_state.status` (`FLASH_START`, `UPGRADE_SUCCESS`), `upgrade_state.progress` (0–100), `upgrade_state.module` (`ap` = main Linux image), `upgrade_state.message`. `dis_state: 2` = actively upgrading; `dis_state: 3` = complete/failed.
+**H2D firmware upgrade state fields** (in `push_status`) `[PROVISIONAL: ha-bambulab models.py — UPGRADE_SUCCESS and dis_state:1/3 confirmed; dis_state:2 and FLASH_START not found in ha-bambulab examples; resolve before acting on these specific values]`: `upgrade_state.status` (`FLASH_START`, `UPGRADE_SUCCESS`), `upgrade_state.progress` (0–100), `upgrade_state.module` (`ap` = main Linux image), `upgrade_state.message`. `dis_state: 2` = actively upgrading; `dis_state: 3` = complete/failed.
 
 **trigger_printer_refresh**: `GET /api/trigger_printer_refresh` forces the container to re-query the printer. Always call this after a printer reboot (firmware upgrade, etc.) before reading `firmware_version` — the cached value is stale until refreshed.
 
 ## Integration Points
 
-**MQTT Topics**: Commands sent to `device/{serial}/request` namespace. Telemetry (including push_status updates) subscribed via `device/{serial}/report` only. Note: "push" refers to message types within the report topic, not a separate subscription.
+**MQTT Topics** `[VERIFIED: ha-bambulab bambu_client.py:613-624]`: Commands sent to `device/{serial}/request` namespace. Telemetry (including push_status updates) subscribed via `device/{serial}/report` only. Note: "push" refers to message types within the report topic, not a separate subscription.
 
 **FTPS Operations**: IoTFTPSClient handles FTPS file transfers. Used for 3MF uploads via `src/bpm/bambuprinter.py`.
 
