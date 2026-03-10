@@ -33,9 +33,9 @@ All in-scope rules changes must be finalized, committed, and pushed before any P
 
 **Clearly foreseen collisions:** If a rules change is known to be needed before Phase 1 starts (e.g., a governance gap identified earlier in the same session), that change must be completed before Phase 1 launches — not deferred to Phase 2. A rules change whose need was visible before the audits ran but was deferred is a process failure. The purpose of the freeze gate is to catch these: if you can articulate the change before launching, you must make it first.
 
-**Post-launch rules changes:** If a rules change is made after any Phase 1 agent is already running or has completed — cancel all running Phase 1 agents, discard all results, commit and push the rules change, then restart Phase 1 in full. Selective re-runs are not permitted: agents that ran against different versions of the standard cannot be mixed in the same audit cycle.
+**Post-launch changes — obsolescence rule:** If any change occurs after Phase 1 agents are launched — rules, code, knowledge, or anything else — immediately assess whether any running or completed agent's output is or will become obsolete as a result. If an agent is measuring something that the change has already invalidated, or will invalidate before the agent finishes, cancel it immediately and discard its output. Do not wait for completion — an agent producing obsolete findings is waste, not progress. Commit and push the change, then re-launch only the affected agents. Agents whose output is not affected by the change may stand.
 
-**The principle:** Auditing against an incomplete standard then claiming the full standard is met is false assurance. The measurement must follow the standard, never precede it.
+**The principle:** An agent's findings are only valid if they reflect the state of the thing being measured at the moment measurement is complete. Any change that shifts that state — rules, code, knowledge — retroactively invalidates findings that assumed the prior state.
 
 ---
 
