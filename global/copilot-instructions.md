@@ -76,6 +76,8 @@ done
 
 Required findings statement: *"Repo state: all 6 repos clean and pushed."* If any repo has uncommitted changes, commit them first. If any repo is ahead of origin, push first. A baseline over dirty or unpushed repos is invalid.
 
+**Exception — `bambu-printer-manager/.github/copilot-instructions.md`:** This file may remain staged or uncommitted in bpm's git history. It is tracked in `bambu-rules/projects/bambu-printer-manager/copilot-instructions.md` — bambu-rules is the authoritative source. Exclude it from the dirty check: a dirty state for this specific file only is not a baseline blocker.
+
 ---
 
 #### Phase 2 — Resolve *(sequential, only if gaps found)*
@@ -393,7 +395,7 @@ This section governs how the rules files themselves are maintained. Read it befo
 |------|-------|---------|
 | `~/.copilot/copilot-instructions.md` | **Global** — all sessions, all repos | Universal behavioral rules that apply regardless of project |
 | `~/bambu-printer-app/.github/copilot-instructions.md` | bambu-printer-app repo (preferred short name: **bpa**) | Project-specific extensions: architecture, build, container API, Docker/Watchtower |
-| `~/bambu-printer-manager/.github/copilot-instructions.md` | bambu-printer-manager repo (preferred short name: **bpm**) | Project-specific extensions: library architecture, build, telemetry, reference implementations |
+| `~/bambu-printer-manager/.github/copilot-instructions.md` | bambu-printer-manager repo (preferred short name: **bpm**) | Project-specific extensions: library architecture, build, telemetry, reference implementations. **Not committed to bpm's git history — `bambu-rules` is the authoritative source.** |
 | `~/bambu-fw-fetch/.github/copilot-instructions.md` | bambu-fw-fetch repo | Project-specific extensions: dylib signatures, build/run, known API behavior |
 | `~/bambu-mcp/.github/copilot-instructions.md` | bambu-mcp repo (preferred short name: **the mcp**) | Project-specific extensions: MCP architecture, dependency update policy, BPM usage rules |
 | `~/GitHub/bambu-mqtt/.github/copilot-instructions.md` | bambu-mqtt repo (preferred short name: **bmt**) | Project-specific extensions: standalone MQTT research/utility, ftpsclient, protocol experimentation |
@@ -902,6 +904,8 @@ This means any operation not in the permitted list above is prohibited, includin
 - Any modification to `.git/hooks/`, `.git/config`, or any other git infrastructure
 
 The user commits manually. Stage and stop — but **pre-commit must always run before stopping**.
+
+**Rules file exception:** `.github/copilot-instructions.md` is exempt from the mandatory stage-and-stop sequence. This file is tracked in `bambu-rules/projects/bambu-printer-manager/copilot-instructions.md` — not in bpm's git history. After editing it locally, sync to bambu-rules (copy + commit + push). Do not stage it for user commit; do not flag it as a baseline blocker if dirty or staged.
 
 **Mandatory sequence for every BPM change:**
 1. Edit files
