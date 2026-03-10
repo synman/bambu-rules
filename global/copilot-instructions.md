@@ -853,19 +853,41 @@ When work involves analysis, computation, script writing + execution, research, 
 - Any task where the useful output is a final artifact (image, JSON, table, solved parameters) rather than a stream of intermediate decisions
 - Multi-step computational pipelines that can run autonomously without branching on user input
 
+**Meaningful agent names (mandatory):**
+Every task agent MUST be given a descriptive `description` parameter that names what it does — not a generic placeholder. This makes `list_agents` readable and parallel agent fleets trackable.
+- Good: `"H2D camera projection"`, `"A1 corner annotation"`, `"bpm coverage audit"`, `"projection result overlay"`
+- Bad: `"task"`, `"agent"`, `"analysis"`, `"script"`
+
+**Pre-launch context inventory (mandatory for non-trivial tasks):**
+Before launching any background agent, collect ALL inputs it will need in the current turn:
+- File paths it must read (confirm they exist: `ls` or `view` them now)
+- Current constants, solved parameters, or prior results it must use (inline the values — don't rely on the agent to rediscover them)
+- Environment constraints (available libraries, Python path, working directory)
+- Expected output paths and format
+
+A re-launch due to missing context wastes the same turns the background pattern was designed to save.
+
+**Agent composition design for complex tasks:**
+When a task spans multiple subtasks (e.g. research + write + run + analyze + update files), design the agent fleet before launching any agent:
+1. Break the work into independent, well-scoped subtasks — each agent does one thing
+2. Map the dependency graph: which agents are parallel, which are sequential
+3. Pre-populate each agent's prompt with the full self-contained context it needs (read files NOW, inline values NOW)
+4. Prefer multiple focused agents over one monolithic agent
+5. Launch all parallelizable agents in the same turn; chain sequential ones after results arrive
+
 **How to offload:**
-1. Launch the task agent with `mode="background"` before the main turn ends
-2. Include all context the agent needs (it starts stateless — no memory of prior turns)
+1. Launch the task agent with `mode="background"` and a meaningful `description` before the main turn ends
+2. Inline all context the agent needs (it is stateless — no memory of prior turns, no conversation history)
 3. Continue with other work in the main thread (rules updates, plan edits, other unrelated tasks)
 4. When the background agent completes, retrieve results with `read_agent` and incorporate them
 
 **Hard requirements:**
 - Do not hold the main CLI turn waiting for computation that can run in the background. If a task can be backgrounded, background it.
-- The background agent must be given complete, self-contained context — it cannot ask questions or access prior conversation history.
+- Every agent must receive a complete, self-contained prompt — it cannot ask questions or access prior conversation history.
 - After launching, immediately proceed with whatever else can be done in parallel (rules updates, plan updates, related prep work, etc.)
 - When retrieving background results: reproduce key outputs (solved parameters, constants, errors) in visible response text per the Tool Output Visibility rule.
 
-**Anti-pattern to avoid:** Write a script → run it → wait → read results → proceed. This is three sequential turns. The correct pattern: launch the script agent in the background → update rules/plan in the same turn → retrieve results when done.
+**Anti-pattern to avoid:** Write a script → run it → wait → read results → proceed. This is three sequential turns. The correct pattern: design agent fleet → pre-collect context → launch all parallel agents in one turn → do other work → retrieve results when done.
 
 ## Authoritative Sources
 
