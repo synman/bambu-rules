@@ -27,6 +27,18 @@ Baseline capture follows four sequential phases. Phases 1 and 4 use concurrent b
 
 #### Phase 1 — Parallel Audits *(launch all 4 concurrently as background task agents)*
 
+**Rules freeze gate (mandatory — complete before launching any Phase 1 agent):**
+
+All in-scope rules changes must be finalized, committed, and pushed before any Phase 1 audit agent is launched. This includes governance additions, standard updates, new audit checks, coverage criteria changes — anything that expands or modifies what the audits are checking.
+
+**Clearly foreseen collisions:** If a rules change is known to be needed before Phase 1 starts (e.g., a governance gap identified earlier in the same session), that change must be completed before Phase 1 launches — not deferred to Phase 2. A rules change whose need was visible before the audits ran but was deferred is a process failure. The purpose of the freeze gate is to catch these: if you can articulate the change before launching, you must make it first.
+
+**Post-launch rules changes:** If a rules change is made after any Phase 1 agent is already running or has completed — cancel all running Phase 1 agents, discard all results, commit and push the rules change, then restart Phase 1 in full. Selective re-runs are not permitted: agents that ran against different versions of the standard cannot be mixed in the same audit cycle.
+
+**The principle:** Auditing against an incomplete standard then claiming the full standard is met is false assurance. The measurement must follow the standard, never precede it.
+
+---
+
 All four agents run simultaneously. Each must produce its required findings statement before Phase 2 may begin. Baseline capture is blocked until all four statements appear in visible response text. **The main agent must reproduce each sub-agent's required findings statement verbatim in its own visible response text. Summarizing, paraphrasing, or acknowledging completion without quoting the exact statement does not satisfy the gate.**
 
 **Agents A1 and A2 — run concurrently (general-purpose agents)**
