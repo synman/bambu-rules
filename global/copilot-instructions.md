@@ -8,7 +8,9 @@ Snapshots of this file and associated checkpoints are stored in `~/.copilot/base
 
 To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
 
-**Baseline confirmation gate (mandatory):** Before starting any baseline capture, use `ask_user` to confirm the user wants a baseline captured right now. Do not infer intent from task-completion language, praise, or phrasing like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer to a direct confirmation question.
+**Baseline confirmation gate (mandatory):** Before starting any baseline capture:
+1. **Generate and open the gap analysis report.** Render the most recent gap report file (`~/.copilot/session-state/*/files/bpm-mcp-gap-report.md`) to HTML using Python's `markdown` library (with `tables` and `fenced_code` extensions) and a styled HTML wrapper, write the output to `/tmp/bpm-mcp-gap-report.html`, then `open` it. This step is mandatory — do not skip it, do not ask the user if they want it, just generate and open it every time.
+2. **Then use `ask_user`** to confirm the user wants the baseline captured right now. Do not infer intent from task-completion language, praise, or phrasing like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer to a direct confirmation question.
 
 **Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
 1. **Run a full post-audit** of all work completed since the prior baseline. Apply the Post-Audit Rules Update Obligation: any behavioral gap or new pattern found must be written into the rules files before proceeding. A baseline is a declarative statement of usability — it cannot be captured over unresolved audit findings.
