@@ -202,6 +202,7 @@ cp ~/GitHub/bambu-rules/baselines/copilot-instructions.${NAME}.md ~/.copilot/cop
 | `2026-03-08-naming-convention` | 2026-03-08 | — | Added baseline naming convention rule (no current-state/latest names) to global rules |
 | `2026-03-09-coverage-wording` | 2026-03-09 | **v1.0.0** | BPM MCP Coverage Standard wording tightened (explicitly names api_server.py); naming-convention mcp snapshot removed from baselines |
 | `ams-pause-resume-knowledge` | 2026-03-10 | **v1.0.1** | AMS/pause-resume knowledge documented; resume command decision table; protocol MQTT command structures; gitignore clean |
+| `rest-compliance-printer-param` | 2026-03-10 | **v1.0.2** | REST compliance (PATCH/DELETE routes), write guard parity, required printer param OpenAPI, contract parity gates, push alerts, AMS dryer polling, bpa audit exclusion, sdcard_file_exists + set_new_bpm_cache_path cataloged, cached SD card properties exposed |
 
 **`2026-03-08-whitelist-baseline` — repo SHAs:**
 | Repo | Branch | SHA |
@@ -320,6 +321,16 @@ The corresponding checkpoint (session history, findings, decisions) is at:
 | `~/bambu-printer-manager` | `devel` | `d72faf45db5e2b581ffc9a2410e2fc495a208da6` |
 | `~/bambu-printer-app` | `main` | `a5d01a6b833c92ac4eb00b9704c25173add7b67b` |
 | `~/bambu-mcp` | `main` | `1aec2739a0ff15d61681859c4765c96d9a2cb57b` |
+| `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
+| `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
+| `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
+
+**`rest-compliance-printer-param` — repo SHAs:**
+| Repo | Branch | SHA |
+|------|--------|-----|
+| `~/bambu-printer-manager` | `devel` | `4c3ac821c6498ba1c8c11020acdf9ec6c16329b6` |
+| `~/bambu-printer-app` | `main` | `bb20c4ee2706ec4255b81e62d95ffd78fedbd0ca` |
+| `~/bambu-mcp` | `main` | `31b030963bb8ce9ca288b6e622a71ace6e727dc9` |
 | `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
 | `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
 | `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
