@@ -479,7 +479,18 @@ for f in ~/bambu-printer-app ~/bambu-printer-manager ~/bambu-mcp ~/bambu-fw-fetc
 done
 ```
 
-For each duplicate heading found: verify the project file version adds unique project-specific content. If it reproduces the global base verbatim — remove it. If it adds a unique extension — keep only the extension.
+For each duplicate heading found: classify it before acting. Three valid states, one invalid:
+
+| State | Criterion | Action |
+|-------|-----------|--------|
+| **Cross-reference** | Heading present; body is ≤3 lines containing "See global rules" or "See \*\*...\*\* in global rules" | ✅ No action — intentional navigation anchor |
+| **Safety emphasis** | Heading is `⚠️`-prefixed; body reproduces global text verbatim; enforcement history justifies redundancy | ✅ No action — documented intentional exception |
+| **Project extension** | Heading present; body adds project-specific content not in global | ✅ Keep only the delta; remove any global base text |
+| **True duplication** | Heading present; body reproduces global base text verbatim with no project-specific addition and no `⚠️` prefix | ❌ Remove — replace with cross-reference or delete |
+
+**Known intentional safety-emphasis duplicates (exempt from drift enforcement):**
+- `⚠️ PRINTER WRITE PROTECTION` in bpa, bpm, bfw — printer crash history makes verbatim redundancy a deliberate choice
+- `⚠️ CONTAINER API AUTH` in bpa, bpm — auth failure has real consequences; brief reminder at project level is intentional
 
 **Layer ownership rules (for content classification):**
 - Raw MQTT protocol fields, payload formats, topic names → **bpm rules** (bpm owns MQTT parsing)
