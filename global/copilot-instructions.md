@@ -771,6 +771,7 @@ When the user responds with **"done"** or **"-i done"** as their first message a
 - **After any intentional restart of the MCP server process** (kill + relaunch), run `mcp-reload` immediately after confirming the new process is up — do not wait for a `tools_changed_notice`. The server restart itself invalidates the existing tool registration; the notice is a lagging consequence, not the trigger to act on.
 - Do not attempt to call unavailable tools; run `mcp-reload` first.
 - The script finds the current session GUID dynamically — it is always safe to run.
+- **Stream view refresh after restart (mandatory):** After any MCP server restart or MJPEG stream restart, check whether a stream is running (`get_stream_url()`). If a stream is active, call `view_stream()` once the restart is verified successful — this reopens the browser tab with the live feed. Do not skip this step; the user's open browser tab will be pointing at a dead server.
 
 **`copilots` wrapper** (`~/bin/copilots`):
 - `copilots` — resume most recent session (default)
