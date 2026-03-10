@@ -367,6 +367,17 @@ A bpm item covered by an MCP tool but missing an HTTP route (or vice versa) is a
 
 "Seems deliberate" or "probably MCP-only by design" are not valid resolutions. Only an explicit exclusions table entry closes a G-type gap.
 
+**Implicit serialization gaps are not documentation gaps (Type H gaps):**
+A dataclass field that is returned by a tool via `_serialize()` (or equivalent recursive serialization) but is absent from the tool's docstring AND the corresponding knowledge table is a **Type H gap**. These fields are technically accessible but agents cannot reliably interpret them — undocumented enum values, missing semantics, and unknown scale/units mean the field is functionally invisible despite being present in the response payload.
+
+Type H gaps must be resolved by:
+- Adding the field to the tool's docstring with full semantics (scale, enum values, edge cases), AND
+- Adding the field to the appropriate `knowledge/api_reference_*.py` table row
+
+Type H gaps may NOT be resolved by exclusion table entries — if the field is in the serialized output, it must be documented. If it should not be documented (truly internal), remove it from the serialized output instead.
+
+**Audit agents must check for Type H gaps** by comparing every field of every serialized dataclass against the tool docstring and knowledge table. Finding a field in `_serialize()` output that has no docstring mention and no knowledge table row is a Type H gap regardless of whether the field seems obvious.
+
 **Knowledge obligation (mandatory for all covered items):**
 Every item reachable via an MCP tool or HTTP route MUST be documented in the appropriate `knowledge/api_reference_*.py` or `knowledge/enums_*.py` module. Coverage without documentation is an incomplete implementation.
 
@@ -443,6 +454,20 @@ The following BPM methods are **intentionally not** exposed as MCP tools or HTTP
 | `ExtruderState.info_bits` | **A** | Raw extruder info bitfield used internally to derive `state` (ExtruderInfoState). No direct agent use case; present in serialized output only. |
 | `ActiveJobInfo.project_info_fetch_attempted` | **A** | Internal diagnostic flag — whether `get_project_info()` has been attempted for this job. Not user-actionable; present in serialized output only. |
 | `BambuSpool.state` (raw RFID) | **C** | Raw RFID state integer. Surfaced in `/api/printer` full JSON; the derived `display_name` and `color` fields provide all user-relevant spool identification. |
+| `BambuPrinter.ftp_connection` | **A** | Internal FTPS context manager used by all SD card file methods. Not a user-facing operation; FTPS sessions are managed within each file method call. |
+| `BambuPrinter.client` | **A** | Internal MQTT client handle used by bpm send/subscribe operations. Not safe or meaningful to expose over HTTP/MCP. |
+| `BambuPrinter.on_update` | **A** | Internal telemetry update callback wired by the mcp session manager. Not a user-facing operation. |
+| `BambuPrinter.recent_update` | **A** | Internal readiness flag; `True` after first telemetry push. No direct agent use case. |
+| `BambuPrinter.internalException` | **A** | Internal error tracker for MQTT communication faults. Not actionable; error state is surfaced via HMS errors and gcode_state. |
+| `BambuPrinter.sdcard_file_exists()` | **A** | Internal file existence check used within file operations. No standalone user use case; file operations handle this internally. |
+| `BambuConfig.set_new_bpm_cache_path()` | **A** | Internal config method for relocating the bpm metadata cache. Set at session init by the mcp server; no runtime agent use case. |
+| `BambuConfig.verbose` | **A** | Internal debug logging flag. Controlled by `BAMBU_MCP_DEBUG` env var at the server level, not per-printer config. No agent use case. |
+| `BambuState.fromJson` | **A** | Internal MQTT payload parser classmethod called by bpm's MQTT message handler. Not user-invokable; state is read via `get_printer_state` and targeted tools. |
+| `NozzleCharacteristics.from_telemetry` | **A** | Internal factory classmethod constructing `NozzleCharacteristics` from raw telemetry. Called by `BambuState.fromJson`; not user-facing. |
+| `NozzleCharacteristics.to_identifier` | **A** | Internal nozzle identifier encoder (e.g. `"HS00-0.4"`). Used for telemetry encoding internally; not user-facing. |
+| `DiscoveredPrinter.fromData` | **A** | Internal SSDP packet parser called by `BambuDiscovery._discovery_thread`. Discovery results are returned by the `discover_printers` MCP tool. |
+| `get_3mf_entry_by_name()` (bambuproject) | **A** | Internal SD card tree-search utility by filename. Used by file tools internally; no standalone agent use case. |
+| `get_3mf_entry_by_id()` (bambuproject) | **A** | Internal SD card tree-search utility by path ID. Same rationale as `get_3mf_entry_by_name`. |
 
 ### Coverage audit checklist
 
@@ -461,11 +486,19 @@ The following procedure is **required** during baseline pre-flight step 2. A del
 
 **How to run:**
 1. Launch a `task` agent (explore or general-purpose) with this prompt (adapt paths as needed):
-   > "Audit the installed bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`. Inspect all public methods, fields, properties, and attributes in `bambuprinter.py`, `bambustate.py`, `bambuconfig.py`, `bambuspool.py`, `bambuproject.py`, `bambutools.py`. For method semantics, consult the official bpm documentation at `https://synman.github.io/bambu-printer-manager/` before evaluating coverage. Cross-check each item against the mcp's MCP tools (`tools/*.py`) and HTTP routes (`api_server.py`). Report all items not covered by at least one access path and not listed in the intentional non-gaps table in `.github/copilot-instructions.md`."
-2. The agent must produce a structured findings report: gap type (A/B/C/D/E/F/G), affected item, and resolution.
+   > "Audit the installed bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`. Inspect all public methods, fields, properties, and attributes in `bambuprinter.py`, `bambustate.py`, `bambuconfig.py`, `bambuspool.py`, `bambuproject.py`, `bambutools.py`. For method semantics, consult the official bpm documentation at `https://synman.github.io/bambu-printer-manager/` before evaluating coverage. Cross-check each item against the mcp's MCP tools (`tools/*.py`) and HTTP routes (`api_server.py`). Report all items not covered by at least one access path and not listed in the intentional non-gaps table in `.github/copilot-instructions.md`. **Additionally, perform a Type H audit:** for every MCP tool that calls `_serialize()` on a bpm dataclass, read the actual dataclass field names from the installed bpm source (`bambustate.py`, `bambuspool.py`, `bambuproject.py`, `bambuconfig.py`), then compare every field name against (a) the tool's Python docstring and (b) the corresponding knowledge table in `knowledge/api_reference_*.py`. Report any field that is present in the serialized output but absent from the docstring or knowledge table (MISSING), any field documented under a name that differs from the actual dataclass field name (WRONG NAME), and any field documented in the knowledge table or docstring that does not exist as a real dataclass field (PHANTOM)."
+2. The agent must produce a structured findings report: gap type (A/B/C/D/E/F/G/H), affected item, and resolution.
 3. Resolve all High-severity gaps (Types A, C, D, F) before proceeding.
-4. For each Medium/Low item (Types B, E, G): add to the intentional exclusions table or add coverage.
+4. For each Medium/Low item (Types B, E, G, H): add to the intentional exclusions table or add coverage.
 5. Output the required findings statement (see global rules). **Baseline capture is blocked until it appears.**
+
+**Serialized field name verification (mandatory — applies to all documentation work):**
+When writing or updating a tool docstring or knowledge table that describes fields returned by `_serialize()`, field names MUST be taken from the actual dataclass definition in the installed bpm source. Do NOT:
+- Copy field names from prior documentation (prior docs may already be wrong)
+- Infer field names from semantic concepts (e.g. `unit_id` because the concept is "unit index")
+- Use names from `get_nozzle_info()` custom dict for `get_printer_state()` nested objects — they are different shapes
+
+The only authoritative source for a serialized field name is the dataclass field definition itself (`@dataclass class X: field_name: type = ...`).
 
 **Audit source: installed package only.** Always audit `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`, not the source tree at `~/bambu-printer-manager/`. The installed version is what the mcp actually runs against.
 
@@ -475,7 +508,7 @@ The following procedure is **required** during baseline pre-flight step 2. A del
 
 **A gap-resolution turn is not complete until the audit report is regenerated and baseline readiness is assessed — in the same turn, without waiting for a user prompt.**
 
-After resolving any audit gaps (documenting Type B fields, adding HTTP routes, fixing Type C documentation errors, updating the exclusions table):
+After resolving any audit gaps (documenting Type B fields, adding HTTP routes, fixing Type C documentation errors, updating the exclusions table, documenting Type H implicit serialization fields):
 
 1. **Regenerate the audit report** — write `/tmp/bpm-mcp-gap-report.html` and update the session markdown copy. This is not optional; it is the verification step that confirms the work is actually done.
 2. **Check baseline readiness** — run the pre-baseline pre-flight (all repos clean, no uncommitted changes, all gaps resolved, report shows zero High-severity items).
