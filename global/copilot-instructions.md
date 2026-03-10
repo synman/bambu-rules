@@ -1129,6 +1129,7 @@ When the user responds with **"done"** or **"-i done"** as their first message a
 
 **Hard requirements:**
 - Run `mcp-reload` proactively the moment tools go missing — do not wait to be told.
+- **After `-i done` (session resume), verify bambu-mcp tools are present before fulfilling any request.** The tool list after a session resume may not include bambu-mcp tools even when the server is running. If `bambu-mcp-get_configured_printers` (or any other bambu-mcp tool) is not callable, tools are missing — run `mcp-reload` again immediately. Do not attempt to fulfill the request via Python imports, curl, container API, or any other fallback path. Missing tools is a known failure mode with a known fix; bypassing that fix to satisfy the request via workarounds is a Root Cause Fix Rule violation.
 - **After any intentional restart of the MCP server process** (kill + relaunch), run `mcp-reload` immediately after confirming the new process is up — do not wait for a `tools_changed_notice`. The server restart itself invalidates the existing tool registration; the notice is a lagging consequence, not the trigger to act on.
 - Do not attempt to call unavailable tools; run `mcp-reload` first.
 - The script finds the current session GUID dynamically — it is always safe to run.
