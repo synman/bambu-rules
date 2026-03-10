@@ -519,6 +519,15 @@ For each duplicate heading found: classify it before acting. Three valid states,
 - If updating a project file rule, check whether the change should actually be promoted to global.
 - Never leave the files in a state where a project file rule contradicts the global file.
 
+### Rules Architecture Integrity (Mandatory)
+
+Rules additions and modifications can themselves cause the drift they are meant to prevent. The accumulation of narrowly-scoped rules gradually redefines foundational semantics, shifts scope, or creates emergent contradictions that no individual rule produced but the aggregate did. Explicit guards:
+
+- **Before adding a rule:** re-read the full section it enters and confirm the section reads as a coherent principle set after insertion — not a patchwork of exceptions or narrowing qualifications.
+- **Before modifying a rule:** identify any other rule whose semantics depend on the one being changed; update those explicitly, never implicitly.
+- **Before each baseline:** read foundational sections in full (not just changed lines) specifically scanning for semantic drift — wording that has subtly shifted, scope that has narrowed or widened, or contradictions that accumulated incrementally.
+- **Dilution is drift:** more rules covering narrower ground erodes the authority of the broad principles they qualify. If a new rule is a specific case of an existing one, it is not a new rule — it is an example, and examples do not belong in the rules files.
+
 ### bambu-rules remote repository (Mandatory sync)
 
 `https://github.com/synman/bambu-rules` is the authoritative remote backup for all rules files and baselines. Its structure mirrors the local layout:
