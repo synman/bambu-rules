@@ -754,7 +754,7 @@ All seven steps must complete in order:
 1. **Observation** — record what was observed that raises the need for this decision
 2. **Question** — formulate a precise, answerable research question
 3. **Hypothesis** — state the claim in **falsifiable** terms. Vague assertions are not falsifiable and are therefore guesses — never drive consequential actions from them.
-   - ✅ Falsifiable: "The H2D accepts Marlin `marlin2` dialect; `G91`/`G90` mode switching is valid"
+   - ✅ Falsifiable: "The H2D accepts Marlin `marlin` dialect; `G91`/`G90` mode switching is valid"
    - ❌ Not falsifiable: "Bambu probably uses something Marlin-like" — too vague to test
 4. **Falsification test** — design the specific experiment that would **refute** the hypothesis *before running it*. What finding would prove it wrong?
 5. **Experiment** — run the falsification test using a registered source (Tier 1/2) or collect empirical evidence (Tier 3). For Tier 2: gate on source registration first.
@@ -779,9 +779,10 @@ All seven steps must complete in order:
 
 **Claim record format (inline annotation when writing a verified claim):**
 ```
-[VERIFIED: BambuStudio] H2D gcode_flavor = marlin2
-  Evidence: BambuStudio resources/profiles/machine/Bambu Lab H2D.json → "gcode_flavor": "marlin2"
-  Falsification test: field value ≠ marlin2 would refute
+[VERIFIED: BambuStudio] H2D gcode_flavor = marlin
+  Evidence: BambuStudio resources/profiles/BBL/machine/fdm_machine_common.json → "gcode_flavor": "marlin"
+  (H2D inherits fdm_bbl_3dp_002_common → fdm_machine_common; A1 inherits fdm_bbl_3dp_001_common → fdm_machine_common; same base for all Bambu printers)
+  Falsification test: field value ≠ marlin in fdm_machine_common would refute
   Confirmed: 2026-03-10
 ```
 
@@ -1214,22 +1215,22 @@ M400             ; confirmed at clearance before next command
 **Rule 4 — GCode must be flavor-compliant with the target printer.** Before generating any calibration GCode, determine the printer's GCode dialect and restrict the command set to commands verified as valid for that dialect. Never assume a command is universally supported. Additional requirements that apply regardless of flavor:
 - Explicitly set coordinate mode at the top of every calibration sequence — never rely on firmware power-on defaults or prior state. (`G90` = absolute, which is required for corner-position calibration.)
 - Include feedrate (`F` parameter) on every `G0`/`G1` move. Never rely on the last programmed feedrate — calibration sequences may be injected into an arbitrary firmware state.
-- Known safe calibration feedrates (Marlin/Bambu): `F3000` for XY/Y travel (50 mm/s), `F600` for Z moves (10 mm/s).
+- Recommended conservative calibration feedrates: `F3000` for XY/Y travel (50 mm/s), `F600` for Z moves (10 mm/s). These are deliberate undershots of firmware-capable speeds and are agent design choices, not sourced from printer specs. BambuStudio start gcode uses far higher speeds (e.g. F30000 for XY); the conservative values are chosen to keep agent-controlled motion safe at all times.
 
 **Flavor lookup (pre-built; extend as new families are validated — all entries must reach `[VERIFIED]` before calibration GCode is emitted):**
 
 | Printer family | GCode flavor | Claim status | Source | Verified calibration commands |
 |----------------|-------------|--------------|--------|-------------------------------|
-| Bambu H2D, A1, X1C, P1S, A1-mini, P1P | Marlin-derived | `[HYPOTHESIS]` | None yet | `G28`, `G90`, `G0 F<n>`, `M400` |
+| Bambu H2D, A1, X1C, P1S, A1-mini, P1P | marlin | `[VERIFIED: BambuStudio]` | BambuStudio `resources/profiles/BBL/machine/fdm_machine_common.json` → `"gcode_flavor": "marlin"` (base for all Bambu profiles; confirmed 2026-03-10) | `G28`, `G90`, `G0 F<n>`, `M400` |
 | Marlin (generic) | Marlin | `[VERIFIED: Marlin firmware docs]` | `https://marlinfw.org/docs/gcode/` | `G28`, `G90`, `G0 F<n>`, `M400` |
 | Klipper | Klipper | `[VERIFIED: Klipper docs]` | `https://www.klipper3d.org/G-Codes.html` | `G28`, `G90`, `G0 F<n>`, `M400` |
 | RepRap Firmware (Duet) | RRF | `[VERIFIED: RepRap/Duet wiki]` | `https://reprap.org/wiki/G-code` | `G28`, `G90`, `G0 F<n>`, `M400` |
 
-**`[HYPOTHESIS]` gate (mandatory):** Any entry marked `[HYPOTHESIS]` MUST be resolved to `[VERIFIED]` before calibration GCode is emitted for that printer family. Resolution procedure: inspect the relevant BambuStudio machine profile (registered source, Tier 1) for `gcode_flavor`; present finding to user; after confirmation, update entry to `[VERIFIED: BambuStudio]`.
+**Note on Bambu-specific extensions:** `gcode_flavor: marlin` means the slicer emits standard Marlin-compatible GCode, but Bambu firmware accepts many custom M-codes (e.g. `G380`, `G29.1`, `G28.140`, `M993`, `M1002`) that are not standard Marlin. Agent-generated calibration GCode must use only the verified commands in the table above — not custom Bambu extensions.
 
 For any printer not in this table, look up the flavor before generating GCode. Do not emit a command whose behavior in that flavor is unverified.
 
-This rule is self-scaling: it applies identically to H2D (CoreXY, nozzle XY, bed Z), A1 (bed-slinger, nozzle X, bed Y, nozzle Z), and any future printer family. The safe motion pattern is the same regardless of kinematics.
+This rule is self-scaling: it applies identically to H2D `[PROVISIONAL: CoreXY, nozzle XY, bed Z — kinematics not directly stated in BambuStudio profiles; common knowledge but unverified from registry source]`, A1 `[PROVISIONAL: bed-slinger, nozzle X, bed Y, nozzle Z — same status]`, and any future printer family. The safe motion pattern is the same regardless of kinematics.
 
 ## Security & Privacy (Mandatory)
 

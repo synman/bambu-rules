@@ -1136,22 +1136,25 @@ All of the following, in order:
 
 ## Bambu GCode Flavor — Camera Calibration Commands (Mandatory)
 
-**Claim status: `[HYPOTHESIS]`** — The assertion that Bambu Lab printers use a Marlin-derived GCode flavor has not yet been verified against a registered authoritative source. Per the Scientific Method Standard (global rules), this entry MUST be resolved to `[VERIFIED]` before calibration GCode is emitted for any Bambu printer. Resolution: inspect BambuStudio machine profiles (registered Tier 1 source) for `gcode_flavor` field; present finding to user; update this section after confirmation.
+**Claim status: `[VERIFIED: BambuStudio]`** — BambuStudio machine profiles confirm `gcode_flavor: marlin` for all Bambu printers.
+- Evidence: `resources/profiles/BBL/machine/fdm_machine_common.json` → `"gcode_flavor": "marlin"` (base profile; H2D inherits via `fdm_bbl_3dp_002_common`; A1 via `fdm_bbl_3dp_001_common`; all Bambu printers share this base)
+- Confirmed: 2026-03-10
+- Note: Prior session cited `resources/profiles/machine/Bambu Lab H2D.json` — this path does NOT exist in BambuStudio repo. All profiles live under `resources/profiles/BBL/`. Prior claim of `gcode_flavor = marlin2` is **REFUTED**; the correct value is `marlin`.
 
 The following applies specifically to any agent-generated GCode for pre-print camera calibration sequences issued via `send_gcode()` or the HTTP `POST /api/send_gcode` route.
 
-**Command set for calibration (all Bambu models — pending `[VERIFIED]` status):**
+**Command set for calibration (all Bambu models — `[VERIFIED: BambuStudio]`):**
 
 | Command | Purpose | Notes |
 |---------|---------|-------|
-| `G28` | Home all axes | Z homes first in Bambu firmware — safe starting point |
+| `G28` | Home all axes | Firmware-controlled homing order (H2D: X first, then Z separately per BambuStudio start gcode); safe to issue at any time |
 | `G90` | Set absolute coordinate mode | Must be issued explicitly at calibration start; never assume prior state |
 | `G0 X<n> Y<n> F<n>` | Rapid XY move | Always include `F`; Bambu accepts mm/min (standard Marlin units) |
 | `G0 Z<n> F<n>` | Rapid Z move | Always include `F`; separate command from XY — never combined |
 | `M400` | Wait for moves to complete | Mandatory before every Z transition and every frame capture |
 
-**Safe calibration feedrates (pending `[VERIFIED]` status):**
-- `F3000` — XY/Y travel (50 mm/s): fast enough to be practical, slow enough to be safe
+**Safe calibration feedrates (conservative design choices — not sourced from printer specs):**
+- `F3000` — XY/Y travel (50 mm/s): deliberate undershot of firmware-capable speeds (BambuStudio uses F30000 for XY travel); safe margin for agent-controlled motion
 - `F600` — Z moves (10 mm/s): conservative descent/ascent; prevents nozzle crash from feedrate overshoot
 
 **Coordinate system:** Always `G90` (absolute). Corner positions are expressed as absolute machine coordinates from the Bambu bed origin. Never use `G91` (relative) in a calibration sequence — position errors accumulate and are not recoverable without rehoming.
