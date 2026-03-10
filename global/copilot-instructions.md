@@ -8,99 +8,167 @@ Snapshots of this file and associated checkpoints are stored in `~/.copilot/base
 
 To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
 
-**Baseline confirmation gate (mandatory):** Before starting any baseline capture:
-1. **Generate and open the gap analysis report.** Render the most recent gap report file (`~/.copilot/session-state/*/files/bpm-mcp-gap-report.md`) to HTML using Python's `markdown` library (with `tables` and `fenced_code` extensions) and a fully styled HTML wrapper, write the output to `/tmp/bpm-mcp-gap-report.html`, then `open` it. This step is mandatory — do not skip it, do not ask the user if they want it, just generate and open it every time.
+### Baseline Workflow
 
-   **Required report header (mandatory — must appear at the top of the rendered HTML, above all audit content):**
-   - **Date/time:** the `current_datetime` value from the agent prompt verbatim (ISO 8601, e.g. `2026-03-10T02:40:24.422Z`). Never infer, approximate, or fabricate. A report with a wrong or missing timestamp is invalid.
-   - **Targeted baseline:** name, version (e.g. `v1.0.2`), and description as planned in `plan.md`
-   - **Repo SHAs:** a table of all in-scope repos with branch and current HEAD SHA (run `git -C <repo> rev-parse HEAD` for each)
-   - **Audit version** and **BPM package path**
-   - These fields must be present even if the audit finds zero gaps. They are the provenance record for the baseline.
+Baseline capture follows four sequential phases. Phases 1 and 4 use concurrent background agents for speed.
 
-   **Required HTML styling (mandatory — plain/minimal CSS is not acceptable):**
-   - GitHub dark theme: `background: #0d1117`, body text `#c9d1d9`, max-width 1100px centered
-   - `h1`: `#58a6ff`; `h2`: `#f0f6fc` with bottom border; `h3`: `#79c0ff`
-   - Tables: `border-collapse: collapse`, `th` background `#161b22` with `#79c0ff` text, alternating row shading (`#0d1117` / `#111820`)
-   - Severity color-coding: cells containing "High" → `#ff7b72` bold; "Medium" → `#f5a623` bold; bold **0** values → `#3fb950`
-   - Resolved/excluded rows: background `#0e2a1a`
-   - `code`: background `#161b22`, color `#79c0ff`, border `#30363d`; `pre`: same background with border-radius
-2. **Then use `ask_user`** to confirm the user wants the baseline captured right now. Do not infer intent from task-completion language, praise, or phrasing like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer to a direct confirmation question.
+---
 
-**Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
-1. **Run a full post-audit** of all work completed since the prior baseline. Apply the Post-Audit Rules Update Obligation: any behavioral gap or new pattern found must be written into the rules files before proceeding. A baseline is a declarative statement of usability — it cannot be captured over unresolved audit findings.
-2. **Run the bpm → bambu-mcp traceability & coverage audit.** Every item in bpm's public API must be reachable through at least one access path in the mcp: an MCP tool, the mcp's HTTP REST API, or both. Knowledge modules must accurately document all covered items. All High-severity gaps (Types A, C, D, F — unreachable fields, wrong documentation, or broken coverage) must be resolved before baseline. Medium/Low gaps (Types B, E, G, H, I — undocumented but accessible, intentionally unwrapped, asymmetric coverage, implicit serialization without documentation, or stream UI elements without knowledge/docstring coverage) must be documented as known issues and may not be silently carried forward. **Deprecated item handling: if a `@deprecated` annotation names a replacement, the deprecated item is excluded and the replacement must be covered instead. If no replacement is defined, the `@deprecated` annotation is ignored for audit purposes — the item is treated as a regular bpm item and coverage is still required.** See the gap audit plan for the full taxonomy and procedure. **How this audit must be executed (mandatory, no exceptions):** Run the audit as a `task` agent (explore or general-purpose) inspecting the **installed** bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`. Consult the official bpm/bpa documentation at `https://synman.github.io/bambu-printer-manager/` for method semantics before evaluating coverage. **A delta spot-check — checking only what changed since the prior baseline — is not a coverage audit and does not satisfy this step**, regardless of how few changes were made. The full installed bpm API must be audited every time. The audit must also include a **Type I (UI Traceability) audit**: enumerate all distinct stream view UI elements in `camera/mjpeg_server.py` and verify each is documented in a knowledge module or tool docstring. The audit must produce a visible findings statement before baseline capture proceeds: *"Coverage audit complete: N items checked, M gaps found, all resolved / K items added to intentional exclusions table."* **Baseline capture is blocked until this statement appears in visible response text. Its absence is a compliance failure.**
-2a. **Run the MCP↔HTTP contract parity audit (mandatory, bambu-mcp repo only).** This is a separate audit step from the bpm coverage audit and must produce its own visible findings statement before baseline proceeds. It verifies that the HTTP API and MCP tools maintain a consistent contract. All failures are High severity and must be resolved before baseline. Check every item in the following list:
-    - **Write guard parity**: every MCP tool with a `user_permission` guard must have a corresponding HTTP route that uses POST/PATCH/DELETE (not GET), has `⚠️` in its docstring, and is documented with a write guard note in the appropriate `knowledge/http_api_*.py` file.
-    - **Required param parity**: every MCP tool that requires a `name` parameter must have a corresponding HTTP route where `printer` is marked `required: true` in the OpenAPI spec. Run the printer param injection verification command (in the Swagger/OpenAPI Maintenance Standard) and confirm `0 missing`.
-    - **Knowledge content placement**: for every `knowledge/*.py` file edited since the prior baseline, confirm the new/changed content is inside the `*_TEXT` string variable, not in the module docstring or outside the string boundary. Read the variable directly and verify.
-    - **HTTP method correctness**: confirm no GET route in `api_server.py` performs a write, delete, or state-changing operation. Run `grep -n 'methods=\["GET"\]' api_server.py` and review each result.
-    - **Dual-layer completeness**: for every route in `api_server.py`, confirm it appears in the appropriate `knowledge/http_api_*.py` file. Routes added or changed since the prior baseline are mandatory; a full scan is preferred.
-    - **Discovery route completeness**: any parameter whose value a caller cannot know without a separate query must have a corresponding discovery route (e.g. `GET /api/default_printer` for the `printer` parameter resolver).
-    Required findings statement: *"MCP↔HTTP contract audit complete: N items checked, M failures found, all resolved."* Baseline capture is blocked until this statement appears in visible response text.
-3. Check every workspace repo for uncommitted changes (`git status --short`). If any exist, commit them first. A baseline that captures dirty working trees is invalid.
-4. Ensure all workspace repos are pushed (`git status --branch` shows no `ahead`). A baseline whose SHAs are not on the remote cannot be restored from the remote.
-5. Capture baseline files, update the Known Baselines table below, then **sync to bambu-rules in the same turn** (see `bambu-rules remote repository` section under Rules File Maintenance).
+#### Naming & Versioning
 
-**Baseline naming convention:** Use descriptive names that reflect *what changed*, not temporal state. Never use names like `current-state` or `latest` — every snapshot becomes historical the moment it is captured. Good examples: `post-audit-clean`, `immutable-guard`, `rules-hardened`.
+- **Name:** descriptive, reflects what changed — never `current-state` or `latest`. Examples: `post-audit-clean`, `rest-compliance`, `printer-param-required`.
+- **Version (SemVer):** `vMAJOR.MINOR.PATCH` tagged on all in-scope repos.
+  - MAJOR — breaking API/protocol/rules structure change
+  - MINOR — new feature, coverage addition, or behavioral rule change *(most baselines)*
+  - PATCH — rules-only fix, typo, doc correction
+- `bambu-printer-manager` is **excluded from tagging** (BPM Write Scope Lock) — its installed SHA is recorded in the table instead.
 
-**Baseline versioning scheme (SemVer):**
-Every baseline carries a `vMAJOR.MINOR.PATCH` version tag applied to all in-scope repos. Use the following criteria:
-- **MAJOR** — breaking change to a core API, protocol, or rules structure (rare)
-- **MINOR** — new feature, new coverage additions, or meaningful behavioral rule change (most baselines)
-- **PATCH** — rules-only fix, typo, doc correction with no functional change
+---
 
-`bambu-printer-manager` is **excluded from SemVer tagging** (BPM Write Scope Lock). Its installed artifact SHA is recorded in the baseline SHA table instead.
+#### Phase 1 — Parallel Audits *(launch all 3 concurrently as background task agents)*
 
+All three agents run simultaneously. Each must produce its required findings statement before Phase 2 may begin. Baseline capture is blocked until all three statements appear in visible response text.
+
+**Agent A — Combined post-audit + bpm coverage (general-purpose agent)**
+
+Covers two formerly separate steps in one pass:
+
+1. **Post-audit:** Review all work since the prior baseline. For every behavioral gap or new pattern found, write the corresponding rule to the correct rules file before producing the findings statement (Post-Audit Rules Update Obligation).
+2. **bpm → mcp coverage (full, not delta):** Every item in bpm's public API must be reachable via at least one access path: an MCP tool, the HTTP REST API, or both. Knowledge modules must accurately document all covered items.
+   - Inspect the **installed** bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`
+   - Consult `https://synman.github.io/bambu-printer-manager/` for method semantics before evaluating coverage
+   - A delta spot-check does not satisfy this step — the full installed bpm API must be checked every time
+   - **Gap severity:** High (Types A, C, D, F — unreachable, wrong docs, broken coverage) must be resolved. Medium/Low (Types B, E, G, H, I) must be documented in the exclusions table.
+   - **Deprecated items:** if `@deprecated` names a replacement, exclude the deprecated item and require coverage of the replacement instead. If no replacement is named, treat the item as active and require coverage.
+3. **Type I UI traceability:** Enumerate all distinct stream view UI elements in `camera/mjpeg_server.py`. Verify each is documented in a knowledge module or tool docstring.
+
+Required findings statement: *"Post-audit + coverage audit complete: N bpm items checked, M gaps found, all resolved / K rules written / L items added to exclusions table."*
+
+---
+
+**Agent B — MCP↔HTTP contract parity (explore or general-purpose agent)**
+
+*(bambu-mcp repo only)* Verify the HTTP API and MCP tools maintain a consistent contract. All failures are High severity and must be resolved before baseline.
+
+| Check | Pass condition |
+|-------|----------------|
+| Write guard parity | Every MCP tool with `user_permission` guard → HTTP route is POST/PATCH/DELETE + `⚠️` in docstring + write guard note in `knowledge/http_api_*.py` |
+| Required param parity | Every MCP tool requiring `name` → HTTP route has `printer` with `required: true` in OpenAPI. Run printer param verification command (Swagger/OpenAPI Maintenance Standard) — must show `0 missing`. |
+| Knowledge content placement | Every `knowledge/*.py` edited since prior baseline: new/changed content is inside `*_TEXT` variable, not in module docstring. Read variable directly and verify. |
+| HTTP method correctness | No GET route in `api_server.py` performs a write or state-changing operation. Run `grep -n 'methods=\["GET"\]' api_server.py` and review each result. |
+| Dual-layer completeness | Every route in `api_server.py` appears in the appropriate `knowledge/http_api_*.py` file. Routes added/changed since prior baseline are mandatory; full scan preferred. |
+| Discovery route completeness | Any parameter a caller cannot discover independently has a corresponding discovery route (e.g. `GET /api/default_printer` for the `printer` resolver). |
+
+Required findings statement: *"MCP↔HTTP contract audit complete: N items checked, M failures found, all resolved."*
+
+---
+
+**Agent C — Repo state check (bash, not a task agent)**
+
+Run in one bash block:
 ```bash
-# --- CAPTURE a new baseline ---
+for repo in ~/bambu-printer-manager ~/bambu-printer-app ~/bambu-mcp ~/bambu-fw-fetch ~/GitHub/bambu-mqtt ~/GitHub/webcamd; do
+  echo "=== $(basename $repo) ==="
+  git -C "$repo" status --short
+  git -C "$repo" status --branch | head -1
+done
+```
+
+Required findings statement: *"Repo state: all 6 repos clean and pushed."* If any repo has uncommitted changes, commit them first. If any repo is ahead of origin, push first. A baseline over dirty or unpushed repos is invalid.
+
+---
+
+#### Phase 2 — Resolve *(sequential, only if gaps found)*
+
+- Fix all gaps identified by Agents A and B
+- Write rules for every new pattern (Post-Audit Rules Update Obligation)
+- Commit and push affected repos
+- Re-run the failed agent(s) until their findings statement is clean
+
+---
+
+#### Phase 3 — Confirm *(sequential)*
+
+1. **Render and open the gap report.** Generate `/tmp/bpm-mcp-gap-report.html` from the most recent `~/.copilot/session-state/*/files/bpm-mcp-gap-report.md` using Python's `markdown` library (`tables` + `fenced_code` extensions).
+
+   **Required report header** (must appear above all audit content — a report missing any field is invalid):
+   - **Date/time:** `current_datetime` value from agent prompt verbatim (ISO 8601). Never infer or fabricate.
+   - **Targeted baseline:** name, version, description
+   - **Repo SHAs:** table of all in-scope repos with branch + HEAD SHA (`git -C <repo> rev-parse HEAD`)
+   - **Audit version** and **BPM package path**
+
+   **Required HTML styling:**
+   - GitHub dark theme: `background: #0d1117`, body `#c9d1d9`, max-width 1100px centered
+   - `h1`: `#58a6ff` · `h2`: `#f0f6fc` with bottom border · `h3`: `#79c0ff`
+   - Tables: `border-collapse: collapse`; `th` → `#161b22` bg / `#79c0ff` text; alternating rows `#0d1117` / `#111820`
+   - Severity: "High" → `#ff7b72` bold · "Medium" → `#f5a623` bold · bold **0** → `#3fb950`
+   - Resolved/excluded rows: `#0e2a1a` bg
+   - `code`: `#161b22` bg / `#79c0ff` color / `#30363d` border · `pre`: same + border-radius
+
+2. **Ask user to confirm.** Use `ask_user`. Do not infer from task-completion language, praise, or phrases like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer.
+
+---
+
+#### Phase 4 — Capture *(snapshot first, then 6 concurrent tag agents)*
+
+**Step 4a — Copy snapshots** (single bash block):
+```bash
 NAME="<baseline-name>"
-VERSION="v<MAJOR>.<MINOR>.<PATCH>"   # increment per versioning scheme above
-cp ~/.copilot/copilot-instructions.md ~/.copilot/baselines/copilot-instructions.${NAME}.md
+VERSION="v<MAJOR>.<MINOR>.<PATCH>"
+cp ~/.copilot/copilot-instructions.md                      ~/.copilot/baselines/copilot-instructions.${NAME}.md
 cp ~/bambu-printer-manager/.github/copilot-instructions.md ~/.copilot/baselines/${NAME}.bambu-printer-manager.copilot-instructions.md
 cp ~/bambu-printer-app/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-printer-app.copilot-instructions.md
 cp ~/bambu-mcp/.github/copilot-instructions.md             ~/.copilot/baselines/${NAME}.bambu-mcp.copilot-instructions.md
 cp ~/bambu-fw-fetch/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.bambu-fw-fetch.copilot-instructions.md
 cp ~/GitHub/bambu-mqtt/.github/copilot-instructions.md     ~/.copilot/baselines/${NAME}.bambu-mqtt.copilot-instructions.md
 cp ~/GitHub/webcamd/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.webcamd.copilot-instructions.md
-# Archive the final gap audit report with the baseline (mandatory)
 cp ~/.copilot/session-state/*/files/bpm-mcp-gap-report.md  ~/.copilot/baselines/${NAME}.bpm-mcp-gap-report.md
-# Tag all in-scope repos at their captured SHAs (bpm excluded — Write Scope Lock)
-git -C ~/bambu-printer-app   tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-printer-app   push origin "${VERSION}"
-git -C ~/bambu-mcp           tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-mcp           push origin "${VERSION}"
-git -C ~/bambu-fw-fetch      tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/bambu-fw-fetch      push origin "${VERSION}"
-git -C ~/GitHub/bambu-mqtt   tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-mqtt   push origin "${VERSION}"
-git -C ~/GitHub/webcamd      tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/webcamd      push origin "${VERSION}"
-git -C ~/GitHub/bambu-rules  tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-rules  push origin "${VERSION}"
-# Then update Known Baselines table below, and sync to bambu-rules (includes gap report).
-
-# --- RESTORE from local baselines ---
-# 1. Restore rules file
-cp ~/.copilot/baselines/copilot-instructions.<baseline-name>.md ~/.copilot/copilot-instructions.md
-
-# 2. Restore repo-specific rules files
-cp ~/.copilot/baselines/<baseline-name>.bambu-printer-manager.copilot-instructions.md ~/bambu-printer-manager/.github/copilot-instructions.md
-cp ~/.copilot/baselines/<baseline-name>.bambu-printer-app.copilot-instructions.md      ~/bambu-printer-app/.github/copilot-instructions.md
-cp ~/.copilot/baselines/<baseline-name>.bambu-mcp.copilot-instructions.md              ~/bambu-mcp/.github/copilot-instructions.md
-cp ~/.copilot/baselines/<baseline-name>.bambu-fw-fetch.copilot-instructions.md         ~/bambu-fw-fetch/.github/copilot-instructions.md
-cp ~/.copilot/baselines/<baseline-name>.bambu-mqtt.copilot-instructions.md             ~/GitHub/bambu-mqtt/.github/copilot-instructions.md
-cp ~/.copilot/baselines/<baseline-name>.webcamd.copilot-instructions.md                ~/GitHub/webcamd/.github/copilot-instructions.md
-
-# 3. Reset workspace repos (from the baseline's repo SHA table)
-git -C ~/bambu-printer-manager   reset --hard <sha>
-git -C ~/bambu-printer-app        reset --hard <sha>
-git -C ~/bambu-mcp                reset --hard <sha>
-git -C ~/bambu-fw-fetch           reset --hard <sha>
-git -C ~/GitHub/bambu-mqtt        reset --hard <sha>
-git -C ~/GitHub/webcamd           reset --hard <sha>
-
-# --- RESTORE from bambu-rules remote (if local baselines/ is unavailable) ---
-cd ~/GitHub/bambu-rules && git pull
-cp ~/GitHub/bambu-rules/baselines/copilot-instructions.<baseline-name>.md ~/.copilot/copilot-instructions.md
-cp ~/GitHub/bambu-rules/baselines/<baseline-name>.bambu-printer-manager.copilot-instructions.md ~/bambu-printer-manager/.github/copilot-instructions.md
-# ... (same pattern for all 6 repos)
-# Then reset workspace repos as above.
 ```
+
+**Step 4b — Tag + push** (launch 6 concurrent background task agents, one per repo):
+
+Each agent runs: `git -C <repo> tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C <repo> push origin "${VERSION}"`
+
+Repos: `~/bambu-printer-app` · `~/bambu-mcp` · `~/bambu-fw-fetch` · `~/GitHub/bambu-mqtt` · `~/GitHub/webcamd` · `~/GitHub/bambu-rules`
+*(bpm excluded — Write Scope Lock)*
+
+Wait for all 6 to complete.
+
+**Step 4c — Finalize** (sequential):
+- Update the Known Baselines table in this file
+- Sync to bambu-rules: `cp ~/.copilot/copilot-instructions.md ~/GitHub/bambu-rules/global/copilot-instructions.md && cd ~/GitHub/bambu-rules && git add -A && git commit -m "baseline: ${NAME} ${VERSION}" && git push`
+
+Required capture statement: *"Baseline [NAME] [VERSION] captured: 8 snapshots, 6 tags pushed, bambu-rules synced."*
+
+---
+
+#### Restore
+
+```bash
+# --- from local baselines ---
+NAME="<baseline-name>"
+cp ~/.copilot/baselines/copilot-instructions.${NAME}.md                      ~/.copilot/copilot-instructions.md
+cp ~/.copilot/baselines/${NAME}.bambu-printer-manager.copilot-instructions.md ~/bambu-printer-manager/.github/copilot-instructions.md
+cp ~/.copilot/baselines/${NAME}.bambu-printer-app.copilot-instructions.md     ~/bambu-printer-app/.github/copilot-instructions.md
+cp ~/.copilot/baselines/${NAME}.bambu-mcp.copilot-instructions.md             ~/bambu-mcp/.github/copilot-instructions.md
+cp ~/.copilot/baselines/${NAME}.bambu-fw-fetch.copilot-instructions.md        ~/bambu-fw-fetch/.github/copilot-instructions.md
+cp ~/.copilot/baselines/${NAME}.bambu-mqtt.copilot-instructions.md            ~/GitHub/bambu-mqtt/.github/copilot-instructions.md
+cp ~/.copilot/baselines/${NAME}.webcamd.copilot-instructions.md               ~/GitHub/webcamd/.github/copilot-instructions.md
+# Reset repos to captured SHAs (see Known Baselines table)
+git -C ~/bambu-printer-manager reset --hard <sha>
+git -C ~/bambu-printer-app     reset --hard <sha>
+git -C ~/bambu-mcp             reset --hard <sha>
+git -C ~/bambu-fw-fetch        reset --hard <sha>
+git -C ~/GitHub/bambu-mqtt     reset --hard <sha>
+git -C ~/GitHub/webcamd        reset --hard <sha>
+
+# --- from bambu-rules remote (if local baselines/ unavailable) ---
+cd ~/GitHub/bambu-rules && git pull
+cp ~/GitHub/bambu-rules/baselines/copilot-instructions.${NAME}.md ~/.copilot/copilot-instructions.md
+# same pattern for all 6 repo rules files, then reset repos as above
+```
+
+**Restore paradox (mandatory awareness):** After any restore, explicitly decide whether to sync bambu-rules before touching it — see bambu-rules remote repository section.
 
 **Known baselines:**
 | Name | Date | Version | Description |
