@@ -35,173 +35,32 @@ without exception.
 
 ## Root Cause Fix Rule (Mandatory)
 
-When the root cause of a problem has been identified in a specific piece of code, **fix that code**. Do not introduce workarounds, shims, compensating logic, or structural changes elsewhere to paper over a bug when a direct fix is available.
+*See **Root Cause Fix Rule** in global rules.*
 
-**Hard requirements:**
-- If you know where the bug is, fix it there. Full stop.
-- Do not add infrastructure, build stages, extra processes, or architectural indirection to compensate for broken code.
-- Adding resource cost (CPU, memory, network, build time) to work around a software defect is never acceptable when the defect can be fixed directly.
-- Rationalization trap: if you find yourself building a case for NOT fixing the root cause — stop. The existence of the rationalization is itself a signal you are about to make the wrong decision.
+## Telemetry Mapping Parity Rule
 
-**Anti-patterns (never do these):**
-- ❌ "I'll add a Dockerfile build stage so the display script doesn't have to handle this edge case"
-- ❌ "I'll wrap the call to avoid fixing the underlying function"
-- ❌ "This workaround restores expected behavior" — restoring behavior via a workaround is not the same as fixing the bug
-
-**Required pre-fix gate:**
-1. Have I identified the file and line(s) where the defect lives? If yes — fix it there.
-2. Am I about to change something OTHER than the defective code? If yes — stop and explain why a direct fix is impossible before proceeding.
-
-## Telemetry Mapping Parity Rule (Mandatory)
-
-When adding or changing support for a telemetry field that belongs to an existing family (for example print_option flags), the implementation MUST follow the proven pattern used by sibling fields unless direct evidence proves otherwise.
-
-**Hard requirements:**
-- Use the nearest working sibling field as the baseline reference (for example `nozzle_blob_detect`).
-- Verify where sibling values are sourced (for example `home_flag` bitfield, `cfg`, `xcam`, or explicit key) before coding.
-- If sibling print_option state is sourced from `home_flag`, default new sibling steady-state mapping to `home_flag` as well unless direct evidence proves a different source.
-- Do not introduce a new parsing path (for example command-ack-only tracking) unless verified evidence shows sibling parity is invalid.
-- If a user says to use a specific field as a reference point, treat that as a mandatory implementation constraint.
-
-**Evidence requirements before coding telemetry mappings:**
-1. Confirm upstream behavior in at least one authoritative source (BambuStudio preferred).
-2. Confirm current project behavior for sibling fields in source code.
-3. Confirm runtime evidence (logs/payloads) and classify it correctly:
-	- command ack payloads confirm command acceptance,
-	- status payloads or bitfields confirm steady-state telemetry source.
-4. Implement using the source that represents steady-state truth unless proven otherwise.
-
-**Anti-fabrication guardrails:**
-- Never invent a new telemetry lifecycle model when a proven local pattern already exists.
-- Never treat command ack events as a complete substitute for continuous status mapping unless explicitly verified.
-- If evidence is mixed, stop and state the uncertainty, then request/collect the missing payload needed to resolve it.
-
-**Parity checklist (must all be true before finalizing):**
-- Did I compare against at least one sibling field implementation line-by-line?
-- Did I verify the same source-of-truth path for both fields?
-- Did I avoid adding special-case logic without explicit evidence?
-- Did I document why this field matches or intentionally differs from sibling behavior?
+*Telemetry field mapping parity rules are documented in bpm rules (bpm-layer implementation guidance). bpa works at the HTTP API layer and does not own MQTT or telemetry parsing.*
 
 ## Verification First - Before Any Work
 
-**Critical Principle**: Never infer architecture, features, behavior, or implementation details from partial code patterns. **ALWAYS verify against actual source code before acting.** This applies to everything: documentation, code analysis, bug fixes, feature work, reverse engineering.
+*See **Verification First** in global rules. All provisions apply, including User assertion handling.*
 
-**User assertion handling (mandatory):**
-- Treat user technical assertions as hypotheses to verify, not as implementation facts.
-- Before changing code based on an assertion, confirm it in source (or authoritative runtime evidence) and record the evidence path.
-- If verification is missing or contradictory, do not patch yet; gather the missing proof first or ask a focused clarification.
-- Do not claim verification/validation success unless the exact validating tool for that stack has run successfully.
+## Strict Execution Mode — Project Validation (Mandatory)
 
-**When in doubt, verify first**:
-- ✗ "I see ANNOUNCE_PUSH and pushing namespace, so a push topic probably exists"
-- ✓ "I found ANNOUNCE_PUSH. Let me check actual client.subscribe() calls to verify the topic is used"
+*See **Strict Execution Mode** in global rules for the base workflow. The following project-specific validation steps are mandatory after any code change:*
 
-**Verification checklist for ANY claim about the codebase:**
-1. **What does the code actually do?** (Read the implementation, not inferred architecture)
-2. **Is this feature really used?** (Search for actual calls/invocations, not just template definitions)
-3. **Does this path actually execute?** (Check conditionals, handlers, try/catch blocks - don't assume)
-4. **Are there edge cases I missed?** (Search for all usages, not just one example)
-5. **What do authoritative reference implementations do?** (Cross-check with ha-bambulab, BambuStudio, OrcaSlicer if unsure)
+- For Python source files in `bambu-printer-manager/`: run `pre-commit run` from the `bambu-printer-manager/` repo root. This is the authoritative staging check and must pass clean (exit 0).
+- For React/Vite frontend files in `bambu-printer-app/`: `yarn build` is the authoritative parse/build validation. Do not treat editor diagnostics alone as sufficient.
 
-**Telemetry absence rule (mandatory):**
-- For telemetry-key claims, explicitly search local runtime evidence (`tests/` fixtures, logs, captured payloads) for the exact key.
-- If the key is absent locally, treat **"missing in local telemetry"** as a first-class interpretation and state it before proposing alternatives.
-- Do not imply local presence from upstream references alone; upstream presence can justify parser support but not claim local telemetry coverage.
+## Process State Awareness — bambu-printer-app
 
-**Pattern Matching Trap**: Finding evidence of a pattern (e.g., command template, enum value, function name) does NOT mean the feature is implemented or used. Each claim requires independent verification:
-- Template exists ≠ command is sent
-- Message type defined ≠ message is parsed
-- Function exists ≠ function is called
-- Namespace present ≠ all sub-features exist
+*See **Process State Awareness** in global rules for the base principle. The following service-specific details apply to this repo:*
 
-**Truncated File Read Trap (mandatory):**
-- A file read that returns truncated output is a **partial read**, not a complete read. Absence of a symbol in truncated output is NOT evidence the symbol is absent from the file.
-- When a large file is truncated, always follow up with a **targeted symbol search** (grep for the exact name) before concluding the symbol does not exist.
-- Required steps when a file read is truncated:
-  1. Note that the read was truncated.
-  2. Run a targeted code search for the specific symbol or key.
-  3. Only conclude absence if the targeted search also returns no results.
-
-**Prior Session Evidence Rule (mandatory):**
-- When prior work cites specific file paths, variable names, or line numbers, treat those as **direct search queries** — look them up verbatim before evaluating credibility.
-- Do not perform a broad independent search, fail to find something, and then dismiss the prior evidence. Exhaust targeted verification first.
-- Specific cited names (variable names, file paths, function names) are higher-signal starting points than a fresh broad search.
-
-### Mandatory Verification Depth Requirements
-
-**For ANY method/function documentation or analysis:**
-1. ✓ **Read the method implementation** - Find the actual implementation in source code
-2. ✓ **Trace data flow** - Read line-by-line how data is constructed/transformed (assignments, operations, conditionals)
-3. ✓ **Document actual values** - Use real examples from the code (e.g., `f"M104 S{value}\n"`), not placeholders like `{0-280}`
-4. ✓ **Check conditionals** - Document when behavior changes based on conditions (e.g., T parameter only when tool_num >= 0)
-5. ✗ **Never assume from names or templates** - Finding a template/constant does NOT tell you what actual values are used
-
-**For method signatures and parameters:**
-1. ✓ **Read the def line** - Check actual parameter names, types, defaults, order
-2. ✓ **Verify parameter order** - Order matters; never rearrange based on assumptions
-3. ✓ **Check parameter usage** - Verify parameters are actually used in the implementation
-4. ✗ **Never infer from field names** - Field names in data structures ≠ method parameter names/order
-
-**For feature existence claims (topics, endpoints, commands, etc.):**
-1. ✓ **Search for actual usage** - Find where it's called, subscribed, registered, or invoked
-2. ✓ **Search for implementation** - Verify the actual code that handles/processes it
-3. ✓ **Check registration/initialization** - Read where it's set up (e.g., `client.subscribe()`, route decorators)
-4. ✗ **Never assume from patterns** - Templates/constants/enums don't prove the feature is active
-
-**Insufficient Verification Examples:**
-- ❌ "Found `SET_CHAMBER_AC_MODE` constant → method `set_chamber_ac_mode()` exists"
-- ❌ "Saw enum value `ANNOUNCE_PUSH` → feature X is implemented"
-- ❌ "Method has `tool_num` parameter → value is always used in output"
-- ❌ "Data structure has `ams_id` field → method parameter order is `(ams_id, slot_id)`"
-- ❌ "File has `@route('/api/status')` → endpoint returns status data"
-- ❌ "Class has `_cache` attribute → caching is implemented"
-
-**Sufficient Verification Examples:**
-- ✅ "Read `set_chamber_temp_target()` lines 363-398 → sends `SET_CHAMBER_AC_MODE` internally, no public method"
-- ✅ "Grepped for feature usage → only called in test file line 150, not in production code"
-- ✅ "Read line 344 → parameter used conditionally: `{'' if tool_num == -1 else ' T' + str(tool_num)}`"
-- ✅ "Checked def line 482 → `load_filament(slot_id: int, ams_id: int = 0)` - slot first, not ams"
-- ✅ "Read route handler lines 89-102 → returns `{'error': 'not implemented'}`, endpoint is a stub"
-- ✅ "Searched for `_cache` usage → only initialized line 45, never read/written, unused attribute"
-
-### Verification Enforcement
-
-**Before making ANY technical claim about the codebase, you MUST:**
-
-1. **Execute verification tools** - Use `read_file`, `grep_search` to gather actual code
-2. **Quote exact code** - Reference specific line numbers and actual code snippets in your reasoning
-3. **Trace execution paths** - For any feature, trace from invocation → implementation → output
-4. **Document conditionals** - Note any if/else that changes behavior (examples: T parameter only when tool_num >= 0, SET_CHAMBER_AC_MODE only when has_chamber_temp)
-5. **Verify user-provided assertions** - Confirm user claims in code before editing behavior that depends on them.
-
-**Self-check before claiming anything is true:**
-- [ ] Did I read the actual implementation method/function/handler?
-- [ ] Did I trace how the data/message/output is constructed line-by-line?
-- [ ] Did I check for conditionals that change behavior?
-- [ ] Can I cite specific line numbers where this behavior occurs?
-- [ ] Did I use actual values from the code, not placeholder syntax?
-- [ ] For telemetry keys, did I explicitly check local fixtures/logs and state whether the key is missing locally?
-- [ ] For user-provided assertions, did I verify them in source before patching?
-
-**If you cannot check all required boxes above, your verification is INSUFFICIENT.**
-
-## Strict Execution Mode (Mandatory)
-
-Use this workflow for every non-trivial request:
-1. **Verify first**: gather concrete evidence with `grep_search` + `read_file` before proposing or applying changes.
-2. **Patch minimally**: implement the smallest targeted change that satisfies verified requirements.
-3. **Validate immediately**: run diagnostics/tests relevant to touched files right after editing.
-   - For Python source files in `bambu-printer-manager/`: run `pre-commit run` from the `bambu-printer-manager/` repo root. This is the authoritative staging check and must pass clean (exit 0).
-   - For React/Vite frontend files: `yarn build` is the authoritative parse/build validation.
-4. **Do not speculate**: if evidence is insufficient or contradictory, stop and collect the missing payload/code path before changing logic.
-
-**Hard requirements:**
-- No speculative architecture or inferred behavior changes without source proof.
-- No broad multi-area edits when a single focused patch is sufficient.
-- For protocol/telemetry work, always establish source-of-truth hierarchy first (steady-state status/bitfield over command ack).
-- After changes, report what was verified, what was changed, and what validation ran.
-- For React/Vite frontend files, `yarn build` is the authoritative parse/build validation.
-- Do not treat editor diagnostics alone as sufficient when build tooling can validate more accurately.
+- Run `ps aux | grep -E "flask|python|api.py"` to identify all running Flask instances.
+- The relevant virtualenv is `/Users/shell/.virtualenvs/bpm/`. Flask instances outside this env or started before the most recent code change are stale.
+- Flask working directory: `api/` under the app root; log output goes to `output.log`.
+- `lsof -p <pid> -a -i` — confirms MQTT connection to printer and Flask port (5000) are live.
+- `lsof -p <pid>` filtered for `cwd` — confirms working directory matches expected app root.
 
 ## Terminal Housekeeping (Mandatory)
 

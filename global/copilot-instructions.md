@@ -463,6 +463,30 @@ If a rule currently exists in both global and a project file and they are identi
 2. **Is it project-specific?** → Add to the relevant project file only.
 3. **Is it a project-specific extension of a global rule?** → Add only the extension/delta to the project file; the global base already applies.
 4. **After adding**, check other project files — if the same rule belongs there too, add it there rather than promoting it to global unless it is truly universal.
+5. **Before writing to a project file**, grep global rules for the same heading: if the heading already exists globally, the project file must not reproduce the base — add only the project-specific extension or a cross-reference.
+
+### Drift Detection (Run at every baseline pre-flight)
+
+Heading duplication across files is the primary signal of layer drift. Run this check before any baseline capture:
+
+```bash
+# Headings that appear in BOTH global and a project file are duplication candidates
+grep "^## " ~/.copilot/copilot-instructions.md | sed 's/^## //' | sort > /tmp/_global_headings.txt
+for f in ~/bambu-printer-app ~/bambu-printer-manager ~/bambu-mcp ~/bambu-fw-fetch ~/GitHub/bambu-mqtt ~/GitHub/webcamd; do
+  grep "^## " "$f/.github/copilot-instructions.md" 2>/dev/null | sed 's/^## //' | sort > /tmp/_proj_headings.txt
+  DUPS=$(comm -12 /tmp/_global_headings.txt /tmp/_proj_headings.txt)
+  if [ -n "$DUPS" ]; then echo "DRIFT in $f: $DUPS"; fi
+done
+```
+
+For each duplicate heading found: verify the project file version adds unique project-specific content. If it reproduces the global base verbatim — remove it. If it adds a unique extension — keep only the extension.
+
+**Layer ownership rules (for content classification):**
+- Raw MQTT protocol fields, payload formats, topic names → **bpm rules** (bpm owns MQTT parsing)
+- HTTP API routes, response shapes, Flask/gunicorn details → **bpa rules** (bpa owns the HTTP API layer)
+- MCP tool names, tool docstring references, printer state field names → **mcp rules** (MCP agent-only behavior)
+- Build commands, virtualenv paths, process/port details → **project-specific rules** for that repo
+- Universal behavioral principles (KISS, Verification First, Root Cause Fix) → **global rules only**
 
 ### Updating an existing rule
 
@@ -594,6 +618,25 @@ Confirmation is only valid when it comes in direct response to an `ask_user` cal
 
 *Note: This section is the Tier 2 source registration gate (from the Scientific Method Standard) applied to web search. A web search is a proposal to consult an unregistered source. Approval here = approval to add that source to the registry for this specific claim.*
 
+## Root Cause Fix Rule (Mandatory)
+
+When the root cause of a problem has been identified in a specific piece of code, **fix that code**. Do not introduce workarounds, shims, compensating logic, or structural changes elsewhere to paper over a bug when a direct fix is available.
+
+**Hard requirements:**
+- If you know where the bug is, fix it there. Full stop.
+- Do not add infrastructure, build stages, extra processes, or architectural indirection to compensate for broken code.
+- Adding resource cost (CPU, memory, network, build time) to work around a software defect is never acceptable when the defect can be fixed directly.
+- Rationalization trap: if you find yourself building a case for NOT fixing the root cause — stop. The existence of the rationalization is itself a signal you are about to make the wrong decision.
+
+**Anti-patterns (never do these):**
+- ❌ "I'll add a Dockerfile build stage so the display script doesn't have to handle this edge case"
+- ❌ "I'll wrap the call to avoid fixing the underlying function"
+- ❌ "This workaround restores expected behavior" — restoring behavior via a workaround is not the same as fixing the bug
+
+**Required pre-fix gate:**
+1. Have I identified the file and line(s) where the defect lives? If yes — fix it there.
+2. Am I about to change something OTHER than the defective code? If yes — stop and explain why a direct fix is impossible before proceeding.
+
 ## KISS Principle (Mandatory)
 
 **KISS is a hard requirement with no exceptions**: Keep It Simple and Straightforward.
@@ -637,27 +680,9 @@ If a request requires inferring a domain-specific value, condition, or definitio
 
 *This is the Tier 3 fast-path from the Scientific Method Standard: when no authoritative source can supply the missing value and no experiment is possible, the experiment IS the ask. The human's answer becomes the peer-reviewed evidence.*
 
-## Proactive Bed Preheat Suggestion (Mandatory)
+## Proactive Bed Preheat Suggestion (Mandatory — MCP only)
 
-When the user asks about a print job's plate or a specific 3MF file (e.g. viewing plate thumbnails, checking filament, asking "what does plate N look like", reviewing a file on the SD card), assess whether preheating is appropriate and, if so, offer it proactively.
-
-**Hard requirements:**
-- **Always ask first** — never issue a preheat command without explicit user permission in the current turn.
-- Determine "good time to preheat" by: printer is idle (`gcode_state` = IDLE/FINISH/FAILED), bed is currently at or near ambient, and a print job appears imminent from context.
-- When offering, use `ask_user` — state the target bed and chamber temperatures and ask permission before acting.
-
-**Temperature source (mandatory — do not hardcode or infer):**
-All target temperatures must be derived from the MCP's own knowledge and tool docstrings:
-1. Call `get_project_info()` for the plate — read `bed_type` and the filament list (type, `nozzle_temp_min`/`nozzle_temp_max`, `drying_temp`).
-2. Consult the `print_file` tool docstring for `bed_type` semantics (`cool_plate`, `eng_plate`, `hot_plate`, `textured_plate`).
-3. Consult `get_knowledge_topic('enums/filament')` for `PlateType` enum values and their standard temperature associations.
-4. Consult `get_spool_info()` for the active spool's `nozzle_temp_min`/`nozzle_temp_max` and `drying_temp` if the filament is already loaded.
-5. Never hardcode bed/chamber temperatures. If knowledge modules do not provide a clear target, state that and ask the user to confirm temps before offering to preheat.
-
-**Execution (after permission):**
-- Use `set_bed_temp(user_permission=True)` and `set_chamber_temp(user_permission=True)`.
-- If the printer is already printing, do not offer (preheat is already active).
-- If the user declines, do not offer again in the same conversation context for the same file.
+This behavioral rule governs the bambu-mcp agent only. Full text is in `~/bambu-mcp/.github/copilot-instructions.md`. Non-MCP repos are not subject to this rule and should not reference MCP tool names or printer state field names.
 
 ## Response Endings (Mandatory)
 
@@ -807,6 +832,12 @@ All seven steps must complete in order:
 **When in doubt, verify first**:
 - ✗ "I see pattern X, so feature Y probably exists"
 - ✓ "I found pattern X. Let me check actual invocations to verify it is used"
+
+**User assertion handling (mandatory):**
+- Treat user technical assertions as hypotheses to verify, not as implementation facts.
+- Before changing code based on an assertion, confirm it in source (or authoritative runtime evidence) and record the evidence path.
+- If verification is missing or contradictory, do not patch yet; gather the missing proof first or ask a focused clarification.
+- Do not claim verification/validation success unless the exact validating tool for that stack has run successfully.
 
 **Verification checklist for ANY claim about the codebase:**
 1. **What does the code actually do?** (Read the implementation, not inferred architecture)
@@ -1068,21 +1099,18 @@ When the user responds with **"done"** or **"-i done"** as their first message a
 
 ## Process State Awareness (Mandatory)
 
-When debugging runtime issues with the bambu-printer-app (or any Flask/Python service in this workspace), **always check process state first** before assuming a code change is live.
+When debugging runtime issues with any long-running service, **always check process state first** before assuming a code change is live.
 
 **Hard requirements:**
-- Run `ps aux | grep -E "flask|python|api.py"` to identify all running instances before concluding behavior is from current code.
+- Identify all running instances of the service before concluding behavior is from current code.
 - Multiple instances of the same service (especially long-running ones started days/weeks ago) indicate stale processes serving old code. Kill them.
-- The relevant virtualenv is `/Users/shell/.virtualenvs/bpm/`. Flask instances outside this env or started before the most recent code change are stale.
 - After killing stale instances, confirm the surviving process PID and start time before retesting.
 
 **State check metadata available:**
 - `ps aux` — PID, PPID, start time, TTY, CPU/mem; start time is the primary staleness indicator
 - TTY field: `??` = detached background process (no terminal); `ttysNNN` = running in an active terminal session — use `kill -9` for detached processes
-- `lsof -p <pid> -a -i` — open network connections: confirms MQTT connection to printer and Flask port (5000) are live
-- `lsof -p <pid>` filtered for `cwd` — confirms working directory matches expected app root (`bambu-printer-app/api`)
-- Python/venv path in command — confirms correct virtualenv (`/Users/shell/.virtualenvs/bpm/`)
-- Flask working directory: `api/` under the app root; log output goes to `output.log`
+
+See the project-specific rules file for service-specific virtualenv paths, ports, and working directories.
 
 ## In-Memory Cache Trap (Mandatory)
 
