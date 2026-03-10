@@ -313,6 +313,22 @@ When adding a new route, the commit must include:
 - [ ] If printer-specific: calls `_get_printer(_rargs())` — do NOT read `printer` directly from `_rargs()`
 - [ ] HTTP method matches REST semantics: GET (read), PATCH (partial update), POST (action/command), DELETE (resource destruction)
 
+### Post-change verification gates (mandatory — run immediately after any change)
+
+These are not reminders — they are blocking gates. Do not move to the next file or next step until each gate passes for the change just made.
+
+**Gate 1 — Knowledge content placement:** After editing any `knowledge/*.py` file, read back the `*_TEXT` variable and confirm the new/changed content is inside it. Show the specific line range. If the content is in the module docstring or outside the string boundary, the change is incomplete — fix it before proceeding. A knowledge edit where content is outside `TEXT` is equivalent to a no-op for agents.
+
+**Gate 2 — MCP↔HTTP write guard parity:** After adding or changing any MCP tool that has a `user_permission` guard, or any HTTP route that performs a write/delete:
+- MCP tool has `user_permission` guard → HTTP route must be POST/PATCH/DELETE + `⚠️` in docstring + write guard note in `knowledge/http_api_*.py`
+- HTTP route is POST/PATCH/DELETE → MCP tool must have `user_permission` guard (or the asymmetry must be documented as Type D in the exclusions table)
+Show the verification result before moving on.
+
+**Gate 3 — Required param parity:** After adding or changing any route parameter:
+- MCP tool requires `name` → HTTP route must have `printer` with `required: true` in OpenAPI
+- Run the printer param injection verification (Swagger/OpenAPI Maintenance Standard) and confirm `0 missing`
+- Any new parameter that a caller cannot discover independently must have a corresponding discovery route
+
 ### Reconciliation gate
 
 Every reconciliation pass (Track 9) must include a Swagger audit:
@@ -321,7 +337,9 @@ Every reconciliation pass (Track 9) must include a Swagger audit:
 - Verify `_ROUTE_EXAMPLES` has `params` + `response` for every route
 - Verify no deprecated route is missing its `⚠️ DEPRECATED SCAFFOLDING` annotation
 - Run printer param injection verification (command above) — must print `0 missing`
+- Confirm `GET /api/default_printer` returns a valid response and its `printer` field matches what `_get_printer()` would resolve
 - Re-run `curl http://localhost:{api_port}/api/openapi.json | python3 -m json.tool | grep -c '"example"'` to confirm example count
+- Run `grep -n 'methods=\["GET"\]' api_server.py` and confirm no GET route performs a write or state-changing operation
 
 ---
 
@@ -829,8 +847,10 @@ print('braces: opens', js.count('{'), 'closes', js.count('}'), 'diff', js.count(
 
 ### Tier 2 — REST API Smoke (run after changes to `api_server.py` or `server.py`)
 
+`smoke_test.py` is the canonical Tier 2+ regression script. Run it with:
+
 ```bash
-cd ~/bambu-mcp && .venv/bin/python smoke_test.py --printer <name>
+cd ~/bambu-mcp && .venv/bin/python3 smoke_test.py
 ```
 
 **Pass criteria:** All checks pass including OpenAPI method verification. No 4xx/5xx responses on read routes.
