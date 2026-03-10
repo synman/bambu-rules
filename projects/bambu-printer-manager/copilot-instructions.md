@@ -350,6 +350,7 @@ The **only** legitimate reason to instantiate `BambuPrinter` directly is to send
 
 For telemetry and data mapping questions, consult these authoritative public repositories:
 
+- **[Official bpm/bpa documentation](https://synman.github.io/bambu-printer-manager/)**: Official mkdocs-generated API reference for all public classes in `bambu-printer-manager` and `bambu-printer-app`. **Consult this first for any bpm API question — before reading installed package source.** Authoritative for method signatures, parameter semantics, behavior differences between printer models, and configuration field descriptions.
 - **[BambuStudio](https://github.com/bambulab/BambuStudio)**: Official Bambu Lab client implementation with complete telemetry mapping and protocol definitions
 - **[OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer)**: Community fork with enhanced telemetry handling and data structure examples
 - **[ha-bambulab](https://github.com/greghesp/ha-bambulab)**: Home Assistant integration with comprehensive MQTT topic and payload documentation
