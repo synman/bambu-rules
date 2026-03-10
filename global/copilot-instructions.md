@@ -37,6 +37,7 @@ Covers two formerly separate steps in one pass:
 2. **bpm → mcp coverage (full, not delta):** Every item in bpm's public API must be reachable via at least one access path: an MCP tool, the HTTP REST API, or both. Knowledge modules must accurately document all covered items.
    - Inspect the **installed** bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`
    - Consult `https://synman.github.io/bambu-printer-manager/` for method semantics before evaluating coverage
+   - **`bambu-printer-app` is out of scope** — never search, grep, read, or mention it during any coverage audit, baseline audit, or bpm→mcp traceability work
    - A delta spot-check does not satisfy this step — the full installed bpm API must be checked every time
    - **Gap severity:** High (Types A, C, D, F — unreachable, wrong docs, broken coverage) must be resolved. Medium/Low (Types B, E, G, H, I) must be documented in the exclusions table.
    - **Deprecated items:** if `@deprecated` names a replacement, exclude the deprecated item and require coverage of the replacement instead. If no replacement is named, treat the item as active and require coverage.
