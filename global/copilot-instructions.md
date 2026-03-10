@@ -9,7 +9,16 @@ Snapshots of this file and associated checkpoints are stored in `~/.copilot/base
 To revert everything to a named baseline, restore the rules file AND reset all workspace repos to their captured SHAs:
 
 **Baseline confirmation gate (mandatory):** Before starting any baseline capture:
-1. **Generate and open the gap analysis report.** Render the most recent gap report file (`~/.copilot/session-state/*/files/bpm-mcp-gap-report.md`) to HTML using Python's `markdown` library (with `tables` and `fenced_code` extensions) and a styled HTML wrapper, write the output to `/tmp/bpm-mcp-gap-report.html`, then `open` it. This step is mandatory — do not skip it, do not ask the user if they want it, just generate and open it every time.
+1. **Generate and open the gap analysis report.** Render the most recent gap report file (`~/.copilot/session-state/*/files/bpm-mcp-gap-report.md`) to HTML using Python's `markdown` library (with `tables` and `fenced_code` extensions) and a fully styled HTML wrapper, write the output to `/tmp/bpm-mcp-gap-report.html`, then `open` it. This step is mandatory — do not skip it, do not ask the user if they want it, just generate and open it every time.
+
+   **Required HTML styling (mandatory — plain/minimal CSS is not acceptable):**
+   - GitHub dark theme: `background: #0d1117`, body text `#c9d1d9`, max-width 1100px centered
+   - `h1`: `#58a6ff`; `h2`: `#f0f6fc` with bottom border; `h3`: `#79c0ff`
+   - Tables: `border-collapse: collapse`, `th` background `#161b22` with `#79c0ff` text, alternating row shading (`#0d1117` / `#111820`)
+   - Severity color-coding: cells containing "High" → `#ff7b72` bold; "Medium" → `#f5a623` bold; bold **0** values → `#3fb950`
+   - Resolved/excluded rows: background `#0e2a1a`
+   - `code`: background `#161b22`, color `#79c0ff`, border `#30363d`; `pre`: same background with border-radius
+   - **Report header must use `current_datetime` verbatim** — never infer or fabricate a date from training data
 2. **Then use `ask_user`** to confirm the user wants the baseline captured right now. Do not infer intent from task-completion language, praise, or phrasing like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer to a direct confirmation question.
 
 **Baseline pre-flight (mandatory — no exceptions):** Before capturing any baseline:
