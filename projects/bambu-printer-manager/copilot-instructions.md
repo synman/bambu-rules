@@ -57,6 +57,25 @@ See **Session Start Protocol + RULES_PRECHECK** in `~/.copilot/copilot-instructi
 full enforcement gate, `RULES_PRECHECK` output format, and invalidation rules — they apply here
 without exception.
 
+## Rules File — Git Exclusion and Sync (Mandatory)
+
+`.github/copilot-instructions.md` (this file) is **intentionally excluded from bpm's git history**:
+
+- It is listed in `.gitignore` (line 39): `.github/copilot-instructions.md`
+- `git status` in this repo should always show **clean** with respect to this file
+- **`bambu-rules` is the authoritative source**: `~/GitHub/bambu-rules/projects/bambu-printer-manager/copilot-instructions.md`
+- The local copy on disk is populated by copying FROM bambu-rules, not via `git add -f`
+
+**Hard requirements:**
+- **Never** use `git add -f .github/copilot-instructions.md` to force-track this file in bpm's git history
+- **Never** stage or commit this file as part of a bpm code change
+- This file does NOT affect the baseline dirty-check — a dirty state here is not a blocker (global rules, line ~78, documents this exemption)
+
+**How to update bpm's local rules copy (authoritative workflow):**
+1. Edit rules via the normal workflow (global or project file → sync to bambu-rules)
+2. Copy from bambu-rules to disk: `cp ~/GitHub/bambu-rules/projects/bambu-printer-manager/copilot-instructions.md ~/bambu-printer-manager/.github/copilot-instructions.md`
+3. git status in bpm remains clean — no staging required
+
 ## Root Cause Fix Rule (Mandatory)
 
 *See **Root Cause Fix Rule** in global rules.*
