@@ -25,29 +25,37 @@ Baseline capture follows four sequential phases. Phases 1 and 4 use concurrent b
 
 ---
 
-#### Phase 1 — Parallel Audits *(launch all 3 concurrently as background task agents)*
+#### Phase 1 — Parallel Audits *(launch all 4 concurrently as background task agents)*
 
-All three agents run simultaneously. Each must produce its required findings statement before Phase 2 may begin. Baseline capture is blocked until all three statements appear in visible response text.
+All four agents run simultaneously. Each must produce its required findings statement before Phase 2 may begin. Baseline capture is blocked until all four statements appear in visible response text. **The main agent must reproduce each sub-agent's required findings statement verbatim in its own visible response text. Summarizing, paraphrasing, or acknowledging completion without quoting the exact statement does not satisfy the gate.**
 
-**Agent A — Combined post-audit + bpm coverage (general-purpose agent)**
+**Agents A1 and A2 — run concurrently (general-purpose agents)**
 
-Covers two formerly separate steps in one pass:
+These are independent and have zero dependency on each other. Launch both at the same time. If only one fails, re-run only that agent in Phase 2.
 
-1. **Post-audit:** Review all work since the prior baseline. For every behavioral gap or new pattern found, write the corresponding rule to the correct rules file before producing the findings statement (Post-Audit Rules Update Obligation).
-2. **bpm → mcp coverage (full, not delta):** Every item in bpm's public API must be reachable via at least one access path: an MCP tool, the HTTP REST API, or both. Knowledge modules must accurately document all covered items.
-   - Inspect the **installed** bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`
-   - Consult `https://synman.github.io/bambu-printer-manager/` for method semantics before evaluating coverage
-   - **`bambu-printer-app` is out of scope** — never search, grep, read, or mention it during any coverage audit, baseline audit, or bpm→mcp traceability work
-   - A delta spot-check does not satisfy this step — the full installed bpm API must be checked every time
-   - **Gap severity:** High (Types A, C, D, F — unreachable, wrong docs, broken coverage) must be resolved. Medium/Low (Types B, E, G, H, I) must be documented in the exclusions table.
-   - **Deprecated items:** if `@deprecated` names a replacement, exclude the deprecated item and require coverage of the replacement instead. If no replacement is named, treat the item as active and require coverage.
-3. **Type I UI traceability:** Enumerate all distinct stream view UI elements in `camera/mjpeg_server.py`. Verify each is documented in a knowledge module or tool docstring.
+**Agent A1 — Post-audit**
 
-Required findings statement: *"Post-audit + coverage audit complete: N bpm items checked, M gaps found, all resolved / K rules written / L items added to exclusions table."*
+Review all work since the prior baseline. For every behavioral gap or new pattern found, write the corresponding rule to the correct rules file before producing the findings statement (Post-Audit Rules Update Obligation).
+
+Required findings statement: *"Post-audit complete: N behavioral gaps found, all resolved / K rules written."*
 
 ---
 
-**Agent B — MCP↔HTTP contract parity (explore or general-purpose agent)**
+**Agent A2 — bpm → mcp coverage (full, not delta)**
+
+Every item in bpm's public API must be reachable via at least one access path: an MCP tool, the HTTP REST API, or both. Knowledge modules must accurately document all covered items.
+- Inspect the **installed** bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`
+- Consult `https://synman.github.io/bambu-printer-manager/` for method semantics before evaluating coverage
+- **`bambu-printer-app` is out of scope** — never search, grep, read, or mention it during any coverage audit, baseline audit, or bpm→mcp traceability work
+- A delta spot-check does not satisfy this step — the full installed bpm API must be checked every time
+- **Gap severity:** High (Types A, C, D, F — unreachable, wrong docs, broken coverage) must be resolved. Medium/Low (Types B, E, G, H, I) must be documented in the exclusions table.
+- **Deprecated items:** if `@deprecated` names a replacement, exclude the deprecated item and require coverage of the replacement instead. If no replacement is named, treat the item as active and require coverage.
+
+Required findings statement: *"Coverage audit complete: N bpm items checked, M gaps found, all resolved / L items added to exclusions table."*
+
+---
+
+**Agent B — MCP↔HTTP contract parity + Type I UI traceability (explore or general-purpose agent)**
 
 *(bambu-mcp repo only)* Verify the HTTP API and MCP tools maintain a consistent contract. All failures are High severity and must be resolved before baseline.
 
@@ -59,12 +67,15 @@ Required findings statement: *"Post-audit + coverage audit complete: N bpm items
 | HTTP method correctness | No GET route in `api_server.py` performs a write or state-changing operation. Run `grep -n 'methods=\["GET"\]' api_server.py` and review each result. |
 | Dual-layer completeness | Every route in `api_server.py` appears in the appropriate `knowledge/http_api_*.py` file. Routes added/changed since prior baseline are mandatory; full scan preferred. |
 | Discovery route completeness | Any parameter a caller cannot discover independently has a corresponding discovery route (e.g. `GET /api/default_printer` for the `printer` resolver). |
+| Type I — UI traceability | All distinct stream view UI elements in `camera/mjpeg_server.py` are documented in a knowledge module or tool docstring. |
 
-Required findings statement: *"MCP↔HTTP contract audit complete: N items checked, M failures found, all resolved."*
+Required findings statement: *"MCP↔HTTP contract audit complete: N items checked, M failures found, all resolved. Type I: P UI elements checked, Q undocumented, all resolved."*
 
 ---
 
 **Agent C — Repo state check (bash, not a task agent)**
+
+> **Exception — read before running the check:** `bambu-printer-manager/.github/copilot-instructions.md` may remain staged or uncommitted in bpm's git history. It is tracked in `bambu-rules/projects/bambu-printer-manager/copilot-instructions.md` — bambu-rules is the authoritative source. A dirty state for this specific file only is **not** a baseline blocker. Exclude it from the dirty check.
 
 Run in one bash block:
 ```bash
@@ -75,18 +86,16 @@ for repo in ~/bambu-printer-manager ~/bambu-printer-app ~/bambu-mcp ~/bambu-fw-f
 done
 ```
 
-Required findings statement: *"Repo state: all 6 repos clean and pushed."* If any repo has uncommitted changes, commit them first. If any repo is ahead of origin, push first. A baseline over dirty or unpushed repos is invalid.
-
-**Exception — `bambu-printer-manager/.github/copilot-instructions.md`:** This file may remain staged or uncommitted in bpm's git history. It is tracked in `bambu-rules/projects/bambu-printer-manager/copilot-instructions.md` — bambu-rules is the authoritative source. Exclude it from the dirty check: a dirty state for this specific file only is not a baseline blocker.
+Required findings statement: *"Repo state: all 6 repos clean and pushed."* If any repo has uncommitted changes, commit them first (bpm exception above applies). If any repo is ahead of origin, push first. A baseline over dirty or unpushed repos is invalid.
 
 ---
 
 #### Phase 2 — Resolve *(sequential, only if gaps found)*
 
-- Fix all gaps identified by Agents A and B
+- Fix all gaps identified by Agents A1, A2, and B
 - Write rules for every new pattern (Post-Audit Rules Update Obligation)
 - Commit and push affected repos
-- Re-run the failed agent(s) until their findings statement is clean
+- **Re-run only the specific sub-check that failed, not the full agent.** If A1 was clean and only A2's coverage had gaps, re-run only A2. If a single Agent B check failed (e.g., knowledge content placement), re-run that check in isolation and produce a targeted findings statement. Repeat until the affected agent's findings statement is clean.
 
 ---
 
@@ -108,7 +117,7 @@ Required findings statement: *"Repo state: all 6 repos clean and pushed."* If an
    - Resolved/excluded rows: `#0e2a1a` bg
    - `code`: `#161b22` bg / `#79c0ff` color / `#30363d` border · `pre`: same + border-radius
 
-2. **Ask user to confirm.** Use `ask_user`. Do not infer from task-completion language, praise, or phrases like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer.
+2. **Ask user to confirm.** Use `ask_user` with the exact question: *"Baseline [NAME] [VERSION] is ready. All audits clean. Proceed with capture?"* — substituting the actual name and version. Do not infer from task-completion language, praise, or phrases like "capture that" / "save this state" / "lock it in". Only proceed after an explicit affirmative answer.
 
 ---
 
@@ -135,7 +144,7 @@ Each agent runs: `git -C <repo> tag -a "${VERSION}" -m "Baseline: ${NAME}" && gi
 Repos: `~/bambu-printer-app` · `~/bambu-mcp` · `~/bambu-fw-fetch` · `~/GitHub/bambu-mqtt` · `~/GitHub/webcamd` · `~/GitHub/bambu-rules`
 *(bpm excluded — Write Scope Lock)*
 
-Wait for all 6 to complete.
+Wait for all 6 to complete. **If any tag agent fails** (tag already exists, push rejected, network error): report which repo failed and the exact error. Do not proceed to Step 4c until all 6 tags are confirmed pushed. If a tag already exists for this version, treat it as a failure — either increment the patch version or delete the existing tag explicitly after user confirmation.
 
 **Step 4c — Finalize** (sequential):
 - Update the Known Baselines table in this file
@@ -147,7 +156,7 @@ Required capture statement: *"Baseline [NAME] [VERSION] captured: 8 snapshots, 6
 
 Immediately after the required capture statement is produced, silently launch a `general-purpose` background agent with the following prompt:
 
-> "Read `~/.copilot/copilot-instructions.md` in full. Focus on the baseline workflow section (Phases 1–4, including the concurrent agent structure, audit steps, gate conditions, and finalization). Review it against the baseline run that just completed: what was slow, redundant, unclear, or caused rework? Produce a concise list of specific proposed changes — each with: (1) what to change, (2) exact location in the rules file, (3) why it improves the process. Do not modify any file. Return only the proposals."
+> "Read `~/.copilot/copilot-instructions.md` in full. Focus on the baseline workflow section (Phases 1–4, including the concurrent agent structure, audit steps, gate conditions, and finalization). Review it against the baseline run that just completed ([NAME] [VERSION]): what was slow, redundant, unclear, or caused rework? Produce a concise list of specific proposed changes — each with: (1) what to change, (2) exact location in the rules file, (3) why it improves the process. Do not modify any file. Return only the proposals."
 
 **Gate (mandatory — no exceptions):**
 - Do not apply any proposed change until the background agent completes and you have presented its findings to the user in visible response text.
