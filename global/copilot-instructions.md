@@ -972,7 +972,19 @@ Before calling `exit_plan_mode` for any plan that is ready to execute, the agent
 1. Write a comprehensive markdown file to `/tmp/<descriptive-name>-plan.md`. The name must reflect the plan's subject (e.g., `response-optimization-plan.md`, `ams-coverage-plan.md`) — never a generic name.
 2. Render it to HTML using Python's `markdown` library (`tables` + `fenced_code` extensions) with GitHub dark theme styling.
 3. Open the HTML in the default browser: `open /tmp/<name>.html`
-4. Then (and only then) call `exit_plan_mode`.
+4. Copy the markdown to `<highest-order-repo>/docs/plans/YYYY-MM-DD-<name>.md` (date-stamped for chronological browsing). Create `docs/plans/` if it does not exist. This step happens before `exit_plan_mode` — the file is in the repo whether or not the plan is ultimately executed.
+5. Then (and only then) call `exit_plan_mode`.
+
+**Highest-order repo selection:**
+The plan document belongs in the repo that is the primary consumer of all changes described in the plan. Use the project dependency hierarchy:
+- `bambu-printer-app` (bpa) — highest; consumes bambu-mcp which consumes bpm
+- `bambu-mcp` — mid-tier; consumes bpm
+- `bambu-printer-manager` (bpm) — lowest; library/daemon
+- `bambu-fw-fetch`, `bambu-mqtt`, `webcamd` — standalone; use whichever is impacted
+
+Selection rule: if the plan touches only one repo, that repo is highest-order. If it touches multiple repos, walk the hierarchy and pick the highest one present. If two unrelated standalone repos are impacted (e.g., bambu-fw-fetch + webcamd), pick the one that owns more of the described work.
+
+**Commit behavior:** The plan markdown is committed per the target repo's Git Commit Policy. For repos with a commit grant (e.g., bambu-mcp), commit and push it immediately after copying. For repos without a grant (e.g., bpm), stage it with `git add` and leave it for the user. Plan doc commits are standalone — do not bundle them into implementation commits.
 
 **Required document content:**
 - Background: why this work is needed, what was tried before (if anything), what the current state is
