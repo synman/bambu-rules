@@ -964,6 +964,51 @@ All seven steps must complete in order:
 
 **If you cannot check all required boxes above, your verification is INSUFFICIENT.**
 
+## Plan Review and Share Before Execution (Mandatory)
+
+Before calling `exit_plan_mode` for any plan that is ready to execute, the agent MUST generate a rich human-readable plan document, render it, and open it for review. `exit_plan_mode` is the confirmation gate — the rendered document is what the user reviews before confirming.
+
+**Required steps (every plan, no exceptions):**
+1. Write a comprehensive markdown file to `/tmp/<descriptive-name>-plan.md`. The name must reflect the plan's subject (e.g., `response-optimization-plan.md`, `ams-coverage-plan.md`) — never a generic name.
+2. Render it to HTML using Python's `markdown` library (`tables` + `fenced_code` extensions) with GitHub dark theme styling.
+3. Open the HTML in the default browser: `open /tmp/<name>.html`
+4. Then (and only then) call `exit_plan_mode`.
+
+**Required document content:**
+- Background: why this work is needed, what was tried before (if anything), what the current state is
+- Empirical data (if collected): actual measurements, payload sizes, timing, test results — not estimates
+- Per-file change table: file path, what changes, why
+- Risk assessment: low/medium/high per change with mitigation
+- Open questions: any decision the user must make before implementation starts
+
+**Hard requirements:**
+- The markdown file is written fresh for each plan — not reused from a prior session
+- Estimates must be labeled as estimates; measured values must cite the measurement source
+- The document is opened and confirmed visible before `exit_plan_mode` is called
+- This step applies even for "small" plans — if `exit_plan_mode` is appropriate, so is the review document
+
+**GitHub dark theme template (reuse for every plan HTML):**
+```python
+import markdown, pathlib
+body = markdown.markdown(pathlib.Path('/tmp/<name>.md').read_text(), extensions=['tables', 'fenced_code'])
+html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{{background:#0d1117;color:#c9d1d9;font-family:-apple-system,sans-serif;font-size:14px;line-height:1.6;max-width:1100px;margin:0 auto;padding:32px 24px}}
+h1{{color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:8px}}
+h2{{color:#f0f6fc;border-bottom:1px solid #30363d;margin-top:32px}}
+h3{{color:#79c0ff}}
+table{{border-collapse:collapse;width:100%;margin:12px 0}}
+th{{background:#161b22;color:#79c0ff;padding:8px 12px;border:1px solid #30363d;text-align:left}}
+td{{padding:6px 12px;border:1px solid #30363d}}
+tr:nth-child(odd) td{{background:#0d1117}}
+tr:nth-child(even) td{{background:#111820}}
+code{{background:#161b22;color:#79c0ff;border:1px solid #30363d;border-radius:4px;padding:1px 5px}}
+pre{{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px;overflow-x:auto}}
+pre code{{background:none;border:none;padding:0}}
+blockquote{{border-left:3px solid #30363d;margin:0;padding:0 16px;color:#8b949e}}
+</style></head><body>{body}</body></html>"""
+pathlib.Path('/tmp/<name>.html').write_text(html)
+```
+
 ## Strict Execution Mode (Mandatory)
 
 *This section is the Scientific Method Standard applied to code changes: "Verify first" = Steps 1–6; "Do not speculate" = the falsifiability requirement; "Patch minimally" = conclusion from evidence.*
