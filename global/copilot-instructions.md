@@ -31,7 +31,7 @@ Baseline capture follows four sequential phases. Phases 1 and 4 use concurrent b
 
 All in-scope rules changes must be finalized, committed, and pushed before any Phase 1 audit agent is launched. This includes governance additions, standard updates, new audit checks, coverage criteria changes — anything that expands or modifies what the audits are checking.
 
-**Clearly foreseen collisions:** If a rules change is known to be needed before Phase 1 starts (e.g., a governance gap identified earlier in the same session), that change must be completed before Phase 1 launches — not deferred to Phase 2. A rules change whose need was visible before the audits ran but was deferred is a process failure. The purpose of the freeze gate is to catch these: if you can articulate the change before launching, you must make it first.
+This applies to gaps you can articulate before launching — if you know a rules change is needed, it is in scope.
 
 **Post-launch changes — obsolescence rule:** If any change occurs after Phase 1 agents are launched — rules, code, knowledge, or anything else — immediately assess whether any running or completed agent's output is or will become obsolete as a result. If an agent is measuring something that the change has already invalidated, or will invalidate before the agent finishes, cancel it immediately and discard its output. Do not wait for completion — an agent producing obsolete findings is waste, not progress. Commit and push the change, then re-launch only the affected agents. Agents whose output is not affected by the change may stand.
 
@@ -56,6 +56,7 @@ Required findings statement: *"Post-audit complete: N behavioral gaps found, all
 **Agent A2 — bpm → mcp coverage (full, not delta)**
 
 Every item in bpm's public API must be reachable via at least one access path: an MCP tool, the HTTP REST API, or both. Knowledge modules must accurately document all covered items.
+- **Fast path when bpm SHA unchanged:** If the installed bpm SHA is identical to the prior baseline's recorded BPM SHA, A2 is scoped to: (a) checking any new MCP tools/HTTP routes added since the prior baseline against the bpm API, and (b) verifying the exclusions table is still current. A full re-audit of the entire bpm public API is required only when the installed bpm SHA has changed.
 - Inspect the **installed** bpm package at `~/bambu-mcp/.venv/lib/python3.12/site-packages/bpm/`
 - Consult `https://synman.github.io/bambu-printer-manager/` for method semantics before evaluating coverage
 - **`bambu-printer-app` is out of scope** — never search, grep, read, or mention it during any coverage audit, baseline audit, or bpm→mcp traceability work
@@ -67,7 +68,7 @@ Required findings statement: *"Coverage audit complete: N bpm items checked, M g
 
 ---
 
-**Agent B — MCP↔HTTP contract parity + Type I UI traceability (explore or general-purpose agent)**
+**Agent B — MCP↔HTTP contract parity + Type I UI traceability (general-purpose agent)**
 
 *(bambu-mcp repo only)* Verify the HTTP API and MCP tools maintain a consistent contract. All failures are High severity and must be resolved before baseline.
 
@@ -109,7 +110,7 @@ Required findings statement: *"Repo state: all 6 repos clean and pushed."* If an
 - Fix all gaps identified by Agents A1, A2, and B
 - Write rules for every new pattern (Post-Audit Rules Update Obligation)
 - Commit and push affected repos
-- **Re-run only the specific sub-check that failed, not the full agent.** If A1 was clean and only A2's coverage had gaps, re-run only A2. If a single Agent B check failed (e.g., knowledge content placement), re-run that check in isolation and produce a targeted findings statement. Repeat until the affected agent's findings statement is clean. *(For A1, which has no sub-checks, re-run the full agent scoped to the area where the gap was found — e.g., "review only behavioral gaps in bambu-mcp since prior baseline.")*
+- **Re-run only the specific sub-check that failed, not the full agent.** If A1 was clean and only A2's coverage had gaps, re-run only A2. If a single Agent B check failed (e.g., knowledge content placement), re-run that check in isolation and produce a targeted findings statement. Repeat until the affected agent's findings statement is clean. For A1, launch a fresh general-purpose agent with the same post-audit prompt narrowed to the specific area where the gap was found (e.g., "review behavioral gaps in bambu-mcp changes since prior baseline only").
 
 ---
 
@@ -150,6 +151,7 @@ cp ~/GitHub/bambu-mqtt/.github/copilot-instructions.md     ~/.copilot/baselines/
 cp ~/GitHub/webcamd/.github/copilot-instructions.md        ~/.copilot/baselines/${NAME}.webcamd.copilot-instructions.md
 cp ~/.copilot/session-state/*/files/bpm-mcp-gap-report.md  ~/.copilot/baselines/${NAME}.bpm-mcp-gap-report.md
 ```
+*(If multiple sessions exist, use: `GAP_REPORT=$(ls -t ~/.copilot/session-state/*/files/bpm-mcp-gap-report.md | head -1) && cp "$GAP_REPORT" ~/.copilot/baselines/${NAME}.bpm-mcp-gap-report.md`)*
 
 **Step 4b — Tag + push** (launch 5 concurrent background task agents, one per repo):
 
@@ -160,11 +162,11 @@ Repos: `~/bambu-printer-app` · `~/bambu-mcp` · `~/bambu-fw-fetch` · `~/GitHub
 
 Wait for all 5 to complete. **If any tag agent fails** (tag already exists, push rejected, network error): report which repo failed and the exact error. Do not proceed to Step 4c until all 5 tags are confirmed pushed. If a tag already exists for this version, treat it as a failure — either increment the patch version or delete the existing tag explicitly after user confirmation. **If the version is incremented after Step 4a snapshots were already copied:** the snapshot filenames embed `${NAME}` not `${VERSION}` so they remain valid, but the `VERSION` variable used in all tag commands must be updated to the new value before re-attempting 4b. Delete any tags already pushed under the old version from repos that succeeded before the failure.
 
-**Step 4c — Finalize** (sequential):
-- Update the Known Baselines table in this file (add name, date, version, description, and BPM installed SHA)
-- Get BPM installed SHA: `pip show bpm -q --path 2>/dev/null | xargs -I{} git -C {} rev-parse HEAD 2>/dev/null || git -C $(python ~/bambu-mcp/.venv/bin/python -c "import bpm, os; print(os.path.dirname(bpm.__file__))/../.. " 2>/dev/null) rev-parse HEAD 2>/dev/null` — or simply `cd ~/bambu-mcp && .venv/bin/pip show bpm | grep Location | awk '{print $2}' | xargs -I{} git -C {} rev-parse HEAD`
-- Sync to bambu-rules: `cp ~/.copilot/copilot-instructions.md ~/GitHub/bambu-rules/global/copilot-instructions.md && cd ~/GitHub/bambu-rules && git add -A && git commit -m "baseline: ${NAME} ${VERSION}" && git push`
-- Tag bambu-rules **after** the sync commit: `git -C ~/GitHub/bambu-rules tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-rules push origin "${VERSION}"`
+**Step 4c — Finalize** (sequential — order is mandatory):
+1. Update the Known Baselines table in this file (add name, date, version, description, and BPM installed SHA)
+2. Get BPM installed SHA: `pip show bpm -q --path 2>/dev/null | xargs -I{} git -C {} rev-parse HEAD 2>/dev/null || git -C $(python ~/bambu-mcp/.venv/bin/python -c "import bpm, os; print(os.path.dirname(bpm.__file__))/../.. " 2>/dev/null) rev-parse HEAD 2>/dev/null` — or simply `cd ~/bambu-mcp && .venv/bin/pip show bpm | grep Location | awk '{print $2}' | xargs -I{} git -C {} rev-parse HEAD`
+3. Sync to bambu-rules: `cp ~/.copilot/copilot-instructions.md ~/GitHub/bambu-rules/global/copilot-instructions.md && cd ~/GitHub/bambu-rules && git add -A && git commit -m "baseline: ${NAME} ${VERSION}" && git push`
+4. Tag bambu-rules **after** the sync commit: `git -C ~/GitHub/bambu-rules tag -a "${VERSION}" -m "Baseline: ${NAME}" && git -C ~/GitHub/bambu-rules push origin "${VERSION}"`
 
 Required capture statement: *"Baseline [NAME] [VERSION] captured: 8 snapshots, 6 tags pushed, bambu-rules synced."*
 
