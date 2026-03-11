@@ -182,15 +182,16 @@ Restarting `server.py` is required after any code change to `bambu-mcp`. The pro
 1. **Find the running process**: `ps aux | grep "server.py" | grep -v grep`
    - Note: detached processes launched with relative paths show as `.venv/bin/python3 server.py` — the pattern `bambu-mcp.*server.py` misses them.
 2. **Kill it**: `kill <PID>`
-3. **Relaunch using the bash tool with `mode="async", detach=true`**:
+3. **Clear the log**: `truncate -s 0 ~/bambu-mcp/bambu-mcp.log` — wipe stale output so the next startup is easy to read.
+4. **Relaunch using the bash tool with `mode="async", detach=true`**:
    ```
    cd ~/bambu-mcp && BAMBU_MCP_DEBUG=1 nohup .venv/bin/python3 server.py >> bambu-mcp.log 2>&1
    ```
    - `detach=true` is **mandatory** — without it, the shell treats the process as a job and suspends it (status `T`/stopped) when the shell exits. `nohup` alone is not sufficient without `detach=true`.
    - Do **not** use `setsid` — not available on macOS.
    - Do **not** use `nohup ... &` in a sync or non-detached async shell — the process will be stopped, not backgrounded.
-4. **Verify**: `ps aux | grep "server.py" | grep -v grep` — confirm the process is running (`S` state, not `T`).
-5. **Check logs**: `tail -10 ~/bambu-mcp/bambu-mcp.log` — confirm clean startup, no import errors.
+5. **Verify**: `ps aux | grep "server.py" | grep -v grep` — confirm the process is running (`S` state, not `T`).
+6. **Check logs**: `tail -10 ~/bambu-mcp/bambu-mcp.log` — confirm clean startup, no import errors.
 
 ### Phase 2 — Reconnect the MCP client (agent action)
 
