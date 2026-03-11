@@ -750,6 +750,8 @@ may return all categories unconditionally.
 
 ## Knowledge Module Maintenance Standard (Mandatory)
 
+*Project-specific extension of the global **Knowledge Completeness Obligation** — adds a third row to its trigger table: code changes in bambu-mcp that alter agent-visible behavior → relevant `knowledge/*.py` module.*
+
 **New features are not complete until their knowledge is in the correct modules.**
 
 bambu-mcp uses a two-level knowledge hierarchy:

@@ -1037,25 +1037,32 @@ Use this workflow for every non-trivial request:
 - For protocol/API work, always establish source-of-truth hierarchy first (steady-state status over command ack).
 - After changes, report what was verified, what was changed, and what validation ran.
 
-## Post-Audit Rules Update Obligation (Mandatory)
+## Knowledge Completeness Obligation (Mandatory)
 
-**Every post-implementation audit that discovers a new behavioral pattern, design rule, or failure mode MUST produce a rules patch before the audit is considered complete.**
+Any event that changes what is known about the system is incomplete until the artifact encoding that knowledge is updated. The required artifact is determined by the event type — not by the agent's preference or convenience.
 
-An audit that finds something and leaves it only in a checklist or session note has failed its purpose. The finding is not captured — it will recur in the next session, in the next project, by the next agent. The only way to prevent recurrence is to write it as a rule.
+**Trigger table (each row is independently required — satisfying one does NOT satisfy another):**
+
+| Event type | Required artifact | Target |
+|---|---|---|
+| Audit discovers behavioral gap, design rule, or failure mode | Rules file (global or project per hierarchy) | `~/.copilot/copilot-instructions.md` or `.github/copilot-instructions.md` in the affected repo |
+| Code change alters observable behavior (API output, protocol, HTTP route, return shape, threshold) | Documentation describing that behavior | README, docstrings, API reference — whichever currently documents the changed behavior |
 
 **Hard requirements:**
-- For each audit item marked ❌ or identified as a gap: write the corresponding rule to the correct file before closing the audit.
-- Global patterns (applicable across all projects) → `~/.copilot/copilot-instructions.md`.
-- Project-specific patterns → `.github/copilot-instructions.md` in the affected repo.
-- Do not leave audit findings as plan.md notes, session checkpoints, or TODO items. Rules files are the only durable output.
-- The audit section in plan.md must include a "rules written" column or status for each item.
+- Each row is independently enforced. A rules file update does not satisfy a docstring update, and vice versa.
+- For audit findings (row 1): write the corresponding rule to the correct file before closing the audit. Global patterns → global file. Project-specific patterns → project file. Do not leave findings in plan.md, session checkpoints, or TODO items — rules files are the only durable output. The audit section in plan.md must include a "rules written" column or status for each item.
+- For behavior changes (row 2): the documentation update ships in the same work unit as the code change — same commit for repos with commit grant; same staged set for stage-and-stop repos.
+- Updates must be substantive — touching a file with no relevant content change does not satisfy the gate.
+- "I'll update it in a follow-up" is not valid. The follow-up that never comes is how stale knowledge accumulates.
 
-**Gap severity tiers:**
-- **Critical** (blocking audit close): any finding that, if unwritten, would allow the same failure to recur in the next session.
-- **Normal** (must write before PR): any finding that represents a new behavioral standard for this codebase.
-- **Low** (document in rules if reusable): feature-specific findings that only apply to one module.
+**Gap severity tiers (applies to both rows):**
+- **Critical** (blocks work unit closure): any gap that would cause a cold agent or user to get wrong results in the next session.
+- **Normal** (must resolve before PR/commit): any gap representing a new behavioral standard or API contract.
+- **Low** (document if reusable): feature-specific gap applicable to one module only.
 
-**This rule is self-applying:** The absence of this rule was itself identified as a gap in an audit. Writing this rule is what closes that gap.
+**Project-specific extensions:** Project rules may add additional rows to the trigger table for artifacts unique to that project (e.g., knowledge modules for an AI agent runtime). Those extensions supplement this rule — they do not replace it.
+
+**This rule is self-applying:** The absence of a rule requiring audit findings to produce rules files was itself identified as a gap in an audit — closing that gap produced the original Post-Audit Rules Update Obligation. That rule is now row 1 of this table. The behavior change that added row 2 required this documentation update to be complete — the rule applied to its own addition.
 
 ## Multi-Step Sequence Completion (Mandatory)
 
