@@ -603,6 +603,20 @@ The following BPM methods are **intentionally not** exposed as MCP tools or HTTP
 | `BambuPrinter.skipped_objects` (deprecated, no replacement) | **C** | `@deprecated` with no named replacement. The underlying `_skipped_objects` list is accessed directly and returned by `get_printer_state` as the `skipped_objects` field. Data is surfaced; deprecated property accessor is not the agent path. |
 | `BambuPrinter.config` property | **A** | Internal configuration object accessor (returns `BambuConfig`). Configuration data is surfaced in `/api/printer` full JSON (via `toJson()`); not a standalone user-facing operation. |
 | `bambutools.cache_write` / `cache_read` / `cache_delete` / `make_cache_key` | **A** | Internal bpm cache I/O utilities used by bpm's elapsed-time estimation and metadata subsystems. Not called from the MCP layer. No user-facing operation. |
+| `BambuConfig.mqtt_client_id` | **A** | Internal MQTT client ID string used by BambuPrinter to identify itself to the broker. Not agent-controllable. Accessible in `/api/printer` full JSON for protocol debugging; no dedicated agent access path needed. |
+| `BambuConfig.mqtt_port` | **A** | Static MQTT broker port (8883). Internal connection parameter. Not agent-controllable. Documented in `knowledge/protocol_mqtt.py`. |
+| `BambuConfig.mqtt_username` | **A** | Static MQTT auth username ("bblp"). Internal connection parameter. Not agent-controllable. Documented in `knowledge/api_reference_state.py` and `knowledge/protocol_mqtt.py`. |
+| `BambuConfig.watchdog_timeout` | **A** | Internal session watchdog timeout in seconds (default 30). Controls when the session watchdog flags the connection as stale. Not agent-controllable. Documented in `knowledge/api_reference_state.py`. |
+| `bambutools.build_nozzle_identifier` / `parse_nozzle_identifier` / `parse_nozzle_type` / `nozzle_type_to_telemetry` | **A** | Internal nozzle encoding/decoding utilities used by BambuPrinter.set_nozzle_details() and refresh_nozzles() internally. Not called from the MCP layer directly. |
+| `bambutools.decodeError` / `decodeHMS` | **A** | Internal HMS error parsing utilities used within bpm to decode HMS error codes. Not called from the MCP layer directly. |
+| `bambutools.getAMSHeatingState` / `getAMSModelBySerial` / `getAMSSeriesByModel` | **A** | Internal AMS state parsing utilities. Not called from the MCP layer. |
+| `bambutools.getPrinterModelBySerial` / `getPrinterSeriesByModel` | **A** | Internal printer model lookup utilities used by bpm during session init. Not called from the MCP layer. |
+| `bambutools.get_file_md5` | **A** | Internal file hash utility used by bpm's project-info caching and 3MF file management. Not exposed as a standalone MCP or HTTP operation. |
+| `bambutools.parseAMSInfo` / `parseAMSStatus` / `parseExtruderInfo` / `parseExtruderStatus` / `parseExtruderTrayState` / `parseRFIDStatus` / `parseStage` | **A** | Internal bpm state parsing utilities that decode raw MQTT telemetry into structured fields. Not called from the MCP layer directly. |
+| `bambutools.scaleFanSpeed` / `unpackTemperature` | **A** | Internal bpm numeric utility functions for fan speed scaling and temperature unpacking. Not called from the MCP layer. |
+| `bambutools.sortFileTreeAlphabetically` | **A** | Internal file tree sort utility used by SD card listing methods. Not exposed as a standalone operation. |
+| `bambutools.HMS_STATUS` | **A** | Module-level dict mapping HMS code ranges to human-readable descriptions. Internal lookup table; not an agent-callable item. |
+| `bambutools.LoggerName` | **A** | Module-level string constant defining the bpm logger name. Internal instrumentation constant. |
 
 ### Coverage audit checklist
 
