@@ -229,6 +229,7 @@ cp ~/GitHub/bambu-rules/baselines/copilot-instructions.${NAME}.md ~/.copilot/cop
 | `ams-pause-resume-knowledge` | 2026-03-10 | **v1.0.1** | — | AMS/pause-resume knowledge documented; resume command decision table; protocol MQTT command structures; gitignore clean |
 | `rest-compliance-printer-param` | 2026-03-10 | **v1.0.2** | — | REST compliance (PATCH/DELETE routes), write guard parity, required printer param OpenAPI, contract parity gates, push alerts, AMS dryer polling, bpa audit exclusion, sdcard_file_exists + set_new_bpm_cache_path cataloged, cached SD card properties exposed |
 | `rest-compliance-printer-param-2` | 2026-03-10 | **v1.0.3** | `4c3ac821` | All Agent B gates clean; analyze_active_job printer param fix; write guard ⚠️ notes for download_file + set_spool_k_factor; E7/E8 stream UI gaps fixed; BambuState.stat/fun excluded; knowledge governance rules; Rules Architecture Integrity; FastMCP response size constraint |
+| `url-factory-gzip-threshold` | 2026-03-11 | **v1.1.0** | `4c3ac821` | URL factory pattern (4 tools → HTTP URL); gzip threshold 100K→300 chars; 3 new monitoring HTTP routes; Knowledge Completeness Obligation rule; Plan Review and Share rule |
 
 **`2026-03-08-whitelist-baseline` — repo SHAs:**
 | Repo | Branch | SHA |
@@ -367,6 +368,16 @@ The corresponding checkpoint (session history, findings, decisions) is at:
 | `~/bambu-printer-manager` | `devel` | `4c3ac821c6498ba1c8c11020acdf9ec6c16329b6` |
 | `~/bambu-printer-app` | `main` | `7d8c60fecb41d2aa7f80e755033e1317e080c25c` |
 | `~/bambu-mcp` | `main` | `f5b138efbab8c9ffd7a911e7d9363d14d406822e` |
+| `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
+| `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
+| `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
+
+**`url-factory-gzip-threshold` — repo SHAs:**
+| Repo | Branch | SHA |
+|------|--------|-----|
+| `~/bambu-printer-manager` | `devel` | `4c3ac821c6498ba1c8c11020acdf9ec6c16329b6` |
+| `~/bambu-printer-app` | `main` | `7d8c60fecb41d2aa7f80e755033e1317e080c25c` |
+| `~/bambu-mcp` | `main` | `b83a931b53633e0fc45953bce55cafa8ab788788` |
 | `~/bambu-fw-fetch` | `main` | `080005040db31734eeac01d8bf958a5860eb7397` |
 | `~/GitHub/bambu-mqtt` | `main` | `faa3ba00144125513a00f8d1e75c1a0cecc14cb5` |
 | `~/GitHub/webcamd` | `bambu` | `4aac6d07e9c5e60d0aadf4301e0e21ff67806686` |
