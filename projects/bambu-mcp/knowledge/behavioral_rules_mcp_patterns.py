@@ -1,0 +1,190 @@
+"""
+behavioral_rules_mcp_patterns.py — MCP array patterns, multi-level hierarchy, compressed responses.
+
+Sub-topic of behavioral_rules. Access via get_knowledge_topic('behavioral_rules/mcp_patterns').
+"""
+
+from __future__ import annotations
+
+BEHAVIORAL_RULES_MCP_PATTERNS_TEXT: str = """
+# Behavioral Rules — MCP Patterns
+
+---
+
+## MCP Array Parameter Pattern
+
+When a tool parameter logically accepts an array (e.g. `ams_mapping`, object lists),
+type it as `list | str | None` — never `str | None` alone.
+
+**Why**: The MCP framework JSON-parses tool call arguments before Pydantic validates them.
+If a client sends `[2, -1, -1]`, the framework delivers it as a Python `list`. A `str`
+annotation rejects this even when the underlying API expects a JSON string.
+
+**Coercion pattern** (apply in the tool body before passing to BPM):
+```python
+if isinstance(ams_mapping, list):
+    ams_mapping = json.dumps(ams_mapping)
+```
+
+This bridges MCP clients (send lists naturally) → BambuPrinter methods (expect JSON strings).
+
+---
+
+## Multi-Level Call Hierarchy
+
+Several tools are designed to be called in sequence — each level returns an index that
+tells you what sub-calls are available at the next level. **Do not fetch payload data you
+don't need — stop at the level that answers your question.**
+
+### Recognizing an index response
+
+An index response contains a list of navigational keys rather than payload data:
+- `plates: [1, 2, ..., 14]` — plate numbers to call next
+- `summary: {field: {min, max, avg, last, count}}` — field names to call series for
+- `contents: {children: [...]}` — directory names to drill into
+
+### Tool hierarchies
+
+**Project file (3 levels)**:
+```
+Level 1 — get_project_info(name, file, 1)    → {plates:[1..N], ...}  (index)
+Level 2 — get_project_info(name, file, N)    → per-plate bbox_objects, filament_used
+Level 3 — get_plate_thumbnail(name, file, N) → just the isometric image
+           get_plate_topview(name, file, N)   → just the top-down image
+```
+Images are omitted by default from `get_project_info` — use the dedicated image tools on
+demand, only for plates you actually need to view.
+
+**Telemetry history (2 levels)**:
+```
+Level 1 — get_monitoring_history(name)         → {summary:{field:{min,max,avg,last},...}}
+Level 2 — get_monitoring_series(name, "tool")  → full time-series for nozzle temp
+           get_monitoring_series(name, "bed")   → full time-series for bed temp
+```
+Always call `get_monitoring_history()` first to see which fields have meaningful activity
+before requesting a full series.
+
+**SD card files (N levels, directory depth)**:
+```
+Level 1 — list_sdcard_files(name)             → top-level tree (or full tree)
+Level 2 — list_sdcard_files(name, "/cache")   → files in /cache only
+Level N — list_sdcard_files(name, "/a/b/c")   → arbitrarily deep subtree
+```
+
+### Locating a finished job's 3mf file
+
+`get_current_job_project_info()` returns `{"error": "no_active_job"}` when `gcode_state` is
+`IDLE`, `FINISH`, or `FAILED`. The correct fallback is **not** a full SD card scan —
+construct the path directly from the last job's metadata:
+
+```
+get_job_info(name) → subtask_name  →  /_jobs/{subtask_name}.gcode.3mf
+```
+
+Then call `get_project_info(name, "/_jobs/{subtask_name}.gcode.3mf", plate_num)`.
+The `/_jobs/` prefix and `.gcode.3mf` suffix are fixed. This pattern is reliable for any
+recently completed or failed job whose file is still on the SD card.
+
+### Image quality tiers
+
+Image tools use one of two quality systems depending on the tool:
+
+**Camera tools** (`get_snapshot`, `view_stream`) use `resolution` (string) + `quality` (int):
+
+| Profile | `resolution` | `quality` | Approx size | Use |
+|---|---|---|---|---|
+| native | `"native"` | `85` | 1–4 MB | Calibration, max fidelity |
+| high | `"1080p"` | `85` | ~500KB–2MB | Anomaly detection, strand analysis |
+| standard | `"720p"` | `75` | ~200–400KB | Routine AI analysis (agent default) |
+| low | `"480p"` | `65` | ~80–150KB | Quick status checks |
+| preview | `"180p"` | `55` | ~20–40KB | Thumbnails, minimal tokens |
+
+**Plate/file tools** (`get_plate_thumbnail`, `get_plate_topview`) use a tier string `quality`:
+
+| Tier | Size | Use |
+|---|---|---|
+| `"preview"` | ~5 KB | Quick overview, multiple plates |
+| `"standard"` | ~16 KB | Default — renders cleanly inline |
+| `"full"` | ~71 KB | When pixel detail is required |
+
+**`analyze_active_job.quality`** uses the same tier strings as plate tools ("preview"/"standard"/"full"/"auto")
+and controls composite **output** image size — it is an unrelated axis from camera snapshot quality.
+
+Default to **standard** profile (`resolution="720p"`, `quality=75`) for routine `get_snapshot` calls.
+Never use native in polling loops (4 MB × N calls = significant token burn).
+
+---
+
+## URL Factory Pattern (All READ Tools)
+
+Every GET/READ tool in this server returns `{"url": "..."}` instead of data. MCP
+payloads are always ~100 chars regardless of data size — FastMCP token overflow is
+eliminated by design.
+
+**Pattern:**
+```python
+# Step 1: call MCP tool → get URL
+result = get_printer_state("H2D")
+# → {"url": "http://localhost:49152/api/printer?printer=H2D"}
+
+# Step 2: fetch data via HTTP (pre-authorized, no user permission needed)
+# curl "http://localhost:49152/api/printer?printer=H2D"
+```
+
+All 39 READ tools follow this pattern. The HTTP route receives the request, runs the
+business logic, and returns the full payload with no size limit.
+
+**Finding the API port** — all URL factory URLs embed the correct port. If you need the
+port separately:
+```bash
+# From any prior URL factory response (parse the port from the url field), OR:
+curl -s http://localhost:49152/api/server_info  # returns {"api_port": ...}
+```
+
+**WRITE tools are unchanged**: `set_*`, `pause_*`, `stop_*`, `send_*`, `load_*`, etc.
+still execute commands and return small confirmation dicts directly through MCP.
+
+---
+
+## Pre-Authorized HTTP Access
+
+All `http://localhost:{api_port}/api` routes are pre-authorized for agent use:
+
+- **Read routes (GET):** always safe — read state, never modify hardware. No user permission needed.
+- **Write routes (POST/PATCH/DELETE):** require the same `user_permission=True` gate as their MCP counterpart. Do not use HTTP write routes to bypass the permission requirement.
+- **Not a premium action** — curl to localhost is not a web search, not Tier 3, and does not require a Premium Requests `ask_user` gate.
+
+```bash
+# Discover api_port then fetch data
+PORT=$(curl -s http://localhost:49152/api/server_info | python3 -c "import json,sys; print(json.load(sys.stdin)['api_port'])")
+curl -s "http://localhost:$PORT/api/printer?printer=H2D" | python3 -m json.tool
+```
+
+To find the route for any tool: call `get_knowledge_topic('http_api/<module>')` where
+module is one of: `printer`, `print`, `ams`, `climate`, `hardware`, `files`, `system`.
+
+---
+
+## `compress_if_large` Utility
+
+`compress_if_large()` in `tools/_response.py` is a utility for compressing large JSON
+dicts. It is not called by any production MCP tool (READ tools return URL dicts; WRITE
+tools return small confirmations). It is preserved for test coverage and custom use.
+
+If you ever encounter a compressed envelope (e.g. from custom code or older server versions):
+```json
+{
+  "compressed": true,
+  "encoding": "gzip+base64",
+  "data": "<base64-encoded gzip bytes>"
+}
+```
+Decompress with:
+```python
+import gzip, json, base64
+data = json.loads(gzip.decompress(base64.b64decode(r["data"])))
+```
+
+Image data (`data:` URI values — JPEG/PNG base64) is already compressed; gzip yields
+< 5% reduction. For image tools, always use the HTTP API route directly.
+"""
