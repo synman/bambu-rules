@@ -748,6 +748,47 @@ may return all categories unconditionally.
 
 ---
 
+## Gzip Compression — Dual-Threshold Model (Mandatory)
+
+`tools/_response.py` applies gzip+base64 compression to non-binary MCP responses using two independent thresholds with distinct purposes:
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `_MIN_COMPRESS_SIZE` | 300 chars | **Compression trigger** — any non-binary response above this size is gzip+base64 encoded. Gzip is net-positive above ~250 chars; below this the base64 envelope is larger than raw JSON. |
+| `_max_response_chars()` | `MAX_MCP_OUTPUT_TOKENS × 4` (default 100,000 chars) | **ResponseSizeTracker overflow signal only** — used to detect when a response would overflow the MCP token budget and auto-tune `MAX_MCP_OUTPUT_TOKENS` in `mcp-config.json`. No longer drives the compress decision. |
+
+**Hard requirements:**
+- `_MIN_COMPRESS_SIZE` is the sole compress trigger. Do not revert to using `_max_response_chars()` as the trigger — that causes large uncompressed payloads to reach the agent until they overflow.
+- Binary responses (those containing data URIs — JPEG/PNG base64) are **never gzip'd**: image data is already compressed; gzip yields < 5% reduction while adding latency and decompression complexity. Binary responses are recorded in the size tracker and returned as-is regardless of size.
+- When a non-binary tool's raw JSON exceeds `_MIN_COMPRESS_SIZE`, `compress_if_large()` wraps it in `{"compressed": true, "encoding": "gzip+base64", "data": "<base64>"}`. The decompression one-liner must appear in the tool docstring: `data = json.loads(gzip.decompress(base64.b64decode(r["data"])))`.
+- Do not alter `_MIN_COMPRESS_SIZE` without re-running the compression benchmark (`smoke_test.py`) and confirming the new threshold is still net-positive (compressed size < raw size) across all tested payload types.
+
+---
+
+## URL Factory Pattern (Mandatory)
+
+For MCP tools where P(overflow) is high — payloads that reliably exhaust the MCP token budget under normal use — return a local HTTP URL instead of the payload directly.
+
+**When to apply:** A tool qualifies for the URL factory when its typical payload size exceeds the MCP token budget (`MAX_MCP_OUTPUT_TOKENS × 4`, default 100,000 chars) during normal real-world use. Examples: `get_snapshot` at native resolution during active prints (~4 MB), `get_monitoring_data` raw time-series (~280K chars). Tools with occasionally-large payloads handled adequately by gzip do NOT qualify.
+
+**Implementation pattern:**
+1. Add the tool function to `tools/url_factory.py`. The function validates connectivity (returns `{"error": "not_connected"}` if no session), constructs the URL from `_api_base()`, and returns `{"url": "http://localhost:{port}/api/...?printer={name}&..."}`.
+2. Add the function name string to `_URL_FACTORY_NAMES` frozenset in `server.py`. This causes `server.py` to skip registration of the original module version — the url_factory version is registered in its place. **If `_URL_FACTORY_NAMES` is not updated, both versions register and the last one wins unpredictably.**
+3. Ensure the corresponding HTTP route exists in `api_server.py` and is documented in the appropriate `knowledge/http_api_*.py` module.
+4. The original tool implementation in its source module remains intact — it serves as the HTTP API layer (`api_server.py` calls it directly).
+
+**Tool docstring requirement:** URL-factory tools must include:
+- The `{"url": "..."}` return shape with the full URL template
+- The instruction "Fetch immediately via bash: `curl -s \"$url\"` — pre-authorized, no permission needed."
+- Payload size estimate and the reason for the URL-factory approach
+- The HTTP response shape (same fields as the prior direct return, so the agent knows what to expect from the curl response)
+
+**Agent behavior:** When a URL-factory tool returns `{"url": "..."}`, the agent MUST fetch it immediately via bash/curl in the same turn. The URL is pre-authorized (local GET, read-only) — no human permission is required. Deferring the curl call to a subsequent turn wastes a round trip and is a behavioral error.
+
+**Covered tools (as of v0.7.0):** `get_snapshot`, `get_monitoring_data`, `get_monitoring_history`, `get_monitoring_series`.
+
+---
+
 ## Knowledge Module Maintenance Standard (Mandatory)
 
 *Project-specific extension of the global **Knowledge Completeness Obligation** — adds a third row to its trigger table: code changes in bambu-mcp that alter agent-visible behavior → relevant `knowledge/*.py` module.*
