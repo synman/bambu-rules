@@ -1005,6 +1005,7 @@ Selection rule: if the plan touches only one repo, that repo is highest-order. I
 - Per-file change table: file path, what changes, why
 - Risk assessment: low/medium/high per change with mitigation
 - Open questions: any decision the user must make before implementation starts
+- **Lateral Impact Assessment (required when plan touches any rules file):** For each rules file being modified: (a) which existing rules were checked, (b) what impact was found (narrowed, widened, superseded, contradicted — or none), (c) why the change is safe. Must appear in the plan before `exit_plan_mode` is called. A rules-change plan without this section is incomplete.
 
 **Hard requirements:**
 - The markdown file is written fresh for each plan — not reused from a prior session
