@@ -1346,7 +1346,7 @@ The `send_gcode()` MCP tool and `POST /api/send_gcode` HTTP route accept multipl
 
 ## H2D Camera-to-Bed Calibration Geometry (Mandatory)
 
-This section documents the verified H2D bed geometry and 9-point perimeter calibration schema established during the corner calibration POC (2026-03-12). Read before generating any calibration GCode or expected-pixel estimates.
+This section documents the verified H2D bed geometry and calibration schema established during the corner calibration POC. Read before generating any calibration GCode or expected-pixel estimates.
 
 **H2D bed boundary points — world coordinates (mm):**
 
@@ -1357,23 +1357,37 @@ This section documents the verified H2D bed geometry and 9-point perimeter calib
 | FR / F345 | (345, 40) | Front-Right — Y=40, **not Y=5**; clip zone at Y=5 may be partially off-camera |
 | FL / F005 | (5, 40) | Front-Left — same Y=40 inset |
 
-**9-point perimeter schema (greedy pixel-space, ≥50px min spacing):**
+**Permanent hard-exclude points (HARD_EXCLUDE):**
 
-Perspective foreshortening: the H2D camera views the bed obliquely from the back/top. The back row (Y=315) spans 625px in the frame; the front row (Y=40) spans only 62px. The right column (X=345) collapses to within 5–35px of front-right corner in pixel space and provides no independent constraints. Greedy selection at ≥50px pixel spacing yields exactly 9 unique usable points:
+These points must never be included in calibration probes. Detection is impossible or produces confirmed false results:
 
-| Name | World (X, Y) | 720p pixel (approx) | Notes |
-|------|-------------|---------------------|-------|
-| B005 | (5, 315) | (54, 203) | ✅ back row |
-| B090 | (90, 315) | (128, 200) | ✅ |
-| B175 | (175, 315) | (234, 197) | ✅ |
-| B260 | (260, 315) | (396, 191) | ✅ |
-| B345 | (345, 315) | (678, 182) | ✅ back row 625px total span |
-| L243 | (5, 243) | (413, 394) | ✅ left col |
-| L175 | (5, 175) | (479, 429) | ✅ ~53px from L243 |
-| F005 | (5, 40) | (523, 452) | ⚠️ ~50px from L175 |
-| F345 | (345, 40) | (584, 468) | ⚠️ ~62px from F005 (max achievable at Y=40) |
+| Name | World (X, Y) | Reason |
+|------|-------------|--------|
+| B345 | (345, 315) | Gantry beam occludes nozzle at back-right; cascade detects bed frame shadow |
+| F005 | (5, 40) | Camera blind zone at front-left; Z-diff dmax<10 even with thermal rescue probe |
+| L108 | (5, 108) | Left-column front blind zone — confirmed false detection (285px RANSAC outlier) |
+| L175 | (5, 175) | Left-column front blind zone — confirmed false detection (292px RANSAC outlier) |
+| L243 | (5, 243) | Left-column front blind zone — confirmed false detection (285px RANSAC outlier) |
 
-Right-column points R108/R175/R243 all fall within 5–35px of F345/F005 in pixel space — excluded as near-degenerate constraints.
+**Left-column blind zone (x=5, y<315):** The camera is mounted at the back-right of the H2D. At x=5 (left edge) for y<315 (any position toward the front), the nozzle tip is occluded by the left frame wall or gantry arm. The detection cascade picks up frame shadow or gantry artifact instead of the nozzle. Pixel positions for L108/L175/L243 (~(440-460, 413-415)) lie in the center-right of the frame — geometrically inconsistent with the back-left anchor B005 at (97, 283) and confirmed as outliers via RANSAC with 285-292px residuals from the 7-point inlier H. B005 (5, 315) is NOT in this blind zone because at y=315 (back row) the nozzle is still visible from the back-right camera position.
+
+**7-point inlier calibration schema (verified — use this):**
+
+RANSAC analysis of the perimeter probe results identified 7 geometrically consistent inliers. This is the authoritative point set for H computation:
+
+| Name | World (X, Y) | 720p pixel (measured) | Reproj err |
+|------|-------------|----------------------|-----------|
+| B005 | (5, 315)   | (96.9, 282.8) | 4.0px |
+| B090 | (90, 315)  | (148.1, 277.3) | 6.8px |
+| B175 | (175, 315) | (239.6, 271.1) | 4.7px |
+| B260 | (260, 315) | (368.1, 274.8) | 6.9px |
+| F345 | (345, 40)  | (513.6, 514.6) | 2.7px |
+| R175 | (345, 175) | (520.7, 421.3) | 9.1px |
+| R243 | (345, 243) | (541.3, 368.4) | 6.3px |
+
+**Mean reproj: 5.79px. H stored in `~/.bambu-mcp/calibration/H2D.json` under `dlt` key.**
+
+Right-column points R108/R175/R243: R175 and R243 are valid inliers. R108 falls within 7px of F345 in pixel space and provides no independent constraint — exclude from probes.
 
 **Expected pixel generation (mandatory — do NOT hardcode):**
 
@@ -1419,12 +1433,51 @@ The corner calibration approach uses visual image differencing to locate the noz
 1. Capture reference frame at Z_CLEARANCE (nozzle physically above camera view)
 2. Descend to Z_CAPTURE (nozzle physically enters camera view as a dark object)
 3. Diff the two frames — the nozzle appears as the brightest region in the delta image
-4. Weighted centroid of the diff gives sub-pixel nozzle position
+4. Detection cascade (4 techniques on same frame pair) selects the best result
+
+**Detection cascade (in priority order):**
+1. `centroid` — centroid of all pixels above threshold in the local crop
+2. `top_pct` — centroid of top 5% brightest pixels; cuts toolhead body blob at left column
+3. `weighted` — intensity-weighted centroid; pulls toward the bright nozzle tip
+4. `sparse_bright` — centroid of top-N isolated bright pixels; resists large uniform blobs
+
+Each technique reports a confidence score. The cascade selects the technique with the highest confidence. If all four yield conf < 0.3 after a rescue probe at Z_RESCUE=1.0mm, the point is marked as failed (not retried).
+
+**Rescue probe:** When the primary Z_CAPTURE probe yields conf < 0.3, re-probe at Z_RESCUE=1.0mm (closer to bed surface) for a stronger diff signal. The rescue probe uses the same 4-technique cascade on the new frame pair.
 
 **Hard requirements:**
 - **Always use a tight local crop** around the expected pixel position (search_radius ≈ 200px). Full-frame diff is unreliable: when Z changes, the entire bed image shifts slightly, producing ~100K changed pixels across the whole frame. The centroid of a full-frame diff is approximately the center of the frame — not the nozzle.
 - When expected pixel is outside the actual frame (scaling mistake), the local crop collapses to zero size. Guard against this: if crop dimension < 20px in either axis, fall back to full-frame diff AND cap confidence at 0.5 as a signal that the result is unreliable.
-- **9-point perimeter schema gives a genuine overdetermined solve.** A 3×3 homography has 8 DOF. 9 pts × 2eq = 18eq >> 8 DOF. With only 4 bed corners the DLT reproj error is always 0.0px (4×2=8eq exactly determined). The 9-point walk produces the first non-zero reproj error, which is a real quality signal. A reproj error > 5px on any single point indicates that point is an outlier (detection noise, bed tilt, or lens distortion).
+- **Probe each point multiple times (up to 3) and take the highest-confidence result.** The diff signal varies frame-to-frame; re-probing costs 1 extra Z-cycle and substantially improves reliability.
+
+**DLT homography requirements:**
+
+- **Hartley normalization is mandatory.** Raw DLT condition numbers reach 7,000,000+ on H2D pixel coordinates (back row spans ~500px; front row spans ~60px). Hartley normalization reduces condition number to ~14 (from millions), making the SVD numerically stable. Any DLT solve without normalization will produce a degenerate H with 200-250px mean reprojection error.
+- **RANSAC outlier rejection is mandatory for any solve with N>5 points.** Individual false detections (shadow artifacts, wrong feature) cannot be distinguished visually from correct detections. RANSAC with a 15px inlier threshold and minimum 4-point hypotheses correctly identifies outliers. The 7-point inlier set is the result of this process.
+- **7-point solve gives mean reproj 5.79px.** This is the verified result. Any re-solve should use the same 7 inlier points (B005/B090/B175/B260/F345/R175/R243) unless new probes are collected.
+- **Overdetermined solve quality signal.** A 3×3 homography has 8 DOF. 7 pts × 2eq = 14eq >> 8 DOF. Any reproj error > 10px on a given point after RANSAC is a strong signal that point is a false detection — not DLT numerical instability.
+
+```python
+def solve_H_hartley(world_pts, pixel_pts):
+    """Solve H with mandatory Hartley normalization."""
+    def norm_T(pts):
+        c = pts.mean(axis=0)
+        d = np.linalg.norm(pts - c, axis=1).mean()
+        s = np.sqrt(2) / max(d, 1e-9)
+        T = np.array([[s,0,-s*c[0]],[0,s,-s*c[1]],[0,0,1.]])
+        return T
+    Tw, Tp = norm_T(world_pts), norm_T(pixel_pts)
+    wn = (Tw @ np.column_stack([world_pts, np.ones(len(world_pts))]).T).T[:, :2]
+    pn = (Tp @ np.column_stack([pixel_pts, np.ones(len(pixel_pts))]).T).T[:, :2]
+    A = []
+    for i in range(len(world_pts)):
+        X,Y = wn[i]; u,v = pn[i]
+        A += [[X,Y,1,0,0,0,-u*X,-u*Y,-u],[0,0,0,X,Y,1,-v*X,-v*Y,-v]]
+    _,_,Vt = np.linalg.svd(np.array(A))
+    h = Vt[-1].reshape(3,3); h /= h[2,2]
+    H = np.linalg.inv(Tp) @ h @ Tw
+    return H / H[2,2]
+```
 
 ## Proactive Bed Preheat Suggestion (Mandatory)
 
