@@ -1389,6 +1389,8 @@ RANSAC analysis of the perimeter probe results identified 7 geometrically consis
 
 Right-column points R108/R175/R243: R175 and R243 are valid inliers. R108 falls within 7px of F345 in pixel space and provides no independent constraint — exclude from probes.
 
+**H calibration resolution (critical):** The DLT H in H2D.json was fitted directly to **720p (1280×720)** captured frames. Projected pixel coordinates from `H @ [wx, wy, 1]` are in 720p pixel space. Do NOT rescale from 1920×1080 — the H has no knowledge of 1920×1080. If the capture resolution differs from 720p, scale the H output by `(frame_w/1280, frame_h/720)`.
+
 **Expected pixel generation (mandatory — do NOT hardcode):**
 
 Expected pixel positions are computed at runtime by projecting each world point through the prior calibration H stored in `~/.bambu-mcp/calibration/H2D.json`. Never hardcode expected pixel values; they change if the camera view changes.
@@ -1397,33 +1399,46 @@ Expected pixel positions are computed at runtime by projecting each world point 
 with open(cal_json_path) as f:
     cal_data = json.load(f)
 H_prior = np.array(cal_data["dlt"]["H"])
+# H is in 720p (1280×720) pixel space
 for name, wx, wy in PERIMETER_POINTS:
     v = H_prior @ np.array([wx, wy, 1.0])
-    native_px, native_py = v[0] / v[2], v[1] / v[2]
-    # Scale to actual captured frame resolution
-    scaled_px = int(native_px * frame_w / 1920)
-    scaled_py = int(native_py * frame_h / 1080)
+    px_720, py_720 = v[0] / v[2], v[1] / v[2]
+    # Scale to actual captured frame resolution (identity if capturing at 720p)
+    scaled_px = int(px_720 * frame_w / 1280)
+    scaled_py = int(py_720 * frame_h / 720)
     expected_pixels[name] = (scaled_px, scaled_py)
 ```
 
-**4-corner bootstrap pixels (native 1920×1080) — use only when H2D.json absent:**
+**4-corner bootstrap pixels — use ONLY when H2D.json absent (pre-calibration estimates):**
 
-| Corner | Native pixel | 720p pixel |
-|--------|------------|------------|
-| BL (B005) | (122, 456) | (81, 304) |
-| BR (B345) | (1526, 408) | (1017, 272) |
-| FR (F345) | (1313, 1056) | (876, 704) |
-| FL (F005) | (1176, 1017) | (784, 678) |
+These are approximate values from before the DLT calibration run. They are NOT the measured detection positions — use the 7-point inlier table for measured positions. Bootstrap values will project B005 ~90px off from the actual detection; this causes the search crop to be off-center which reduces detection confidence (conf≈0.5 instead of conf≈1.0). After a successful calibration run, H2D.json self-corrects this immediately.
 
-`[VERIFIED: empirical, 2026-03-12]` — all four measured at conf=1.000, Zc=714.5mm.
+| Corner | 720p pixel (estimate) | Actual measured 720p |
+|--------|----------------------|---------------------|
+| BL (B005) | (81, 304) | (96.9, 282.8) — use this |
+| BR (B345) | HARD_EXCLUDE | N/A |
+| FR (F345) | (876, 704) | (513.6, 514.6) — use this |
+| FL (F005) | HARD_EXCLUDE | N/A |
 
 **Timing constants (verified empirically):**
 - `HOME_WAIT_SECONDS = 90` — G28 on H2D takes 60–90s; 8s is dangerously short
 - `SETTLE_SECONDS_XY = 12.0` — cross-bed diagonal ~490mm at F3000 ≈ 10s + buffer
 - `SETTLE_SECONDS_Z = 3.0` — short Z moves; vibration damps quickly
-- `Z_CLEARANCE = 10mm`, `Z_CAPTURE = 2mm`
+- `Z_CLEARANCE = 10mm`, `Z_CAPTURE = 2mm`, `Z_RESCUE = 1.0mm` (used in rescue probe when primary conf<0.3)
 
 **Camera orientation:** Higher Y world (back of bed) → lower pixel row (top of frame). Lower Y world (front of bed) → higher pixel row (bottom of frame). Left X → lower pixel column. Right X → higher pixel column.
+
+**Perimeter walk point order and effective probe set:**
+
+The walk visits points in travel-optimized order to minimize cross-bed moves. After HARD_EXCLUDE, the effective probe list is:
+
+```
+B005 → B090 → B175 → B260 → R243 → R175 → F345
+```
+
+This is exactly the 7-point inlier set. No additional points are needed — 7×2=14 equations vs 8 DOF gives a well-overdetermined system. Adding non-excluded points from the left column (L108/L175/L243) is harmful — they inject false detections that RANSAC must reject and can skew the solve if RANSAC hypothesis luck is bad.
+
+**Front Y offset:** All front-edge probes use Y=40, not Y=0. The bed's printable area starts at Y≈0 but the front clip hardware and camera geometry make Y<40 unreliable. The front-edge world line is Y=40 for all calibration purposes.
 
 ## Visual Frame-Diff Nozzle Detection (Mandatory)
 
