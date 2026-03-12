@@ -1385,9 +1385,43 @@ RANSAC analysis of the perimeter probe results identified 7 geometrically consis
 | R175 | (345, 175) | (520.7, 421.3) | 9.1px |
 | R243 | (345, 243) | (541.3, 368.4) | 6.3px |
 
-**Mean reproj: 5.79px. H stored in `~/.bambu-mcp/calibration/H2D.json` under `dlt` key.**
+**Mean reproj: 5.79px. Condition number: 100.4. H stored in `~/.bambu-mcp/calibration/H2D.json` under `dlt` key.**
 
-Right-column points R108/R175/R243: R175 and R243 are valid inliers. R108 falls within 7px of F345 in pixel space and provides no independent constraint — exclude from probes.
+The condition number of 100.4 is the quality benchmark for this H. A re-solve on the same 7 points should produce a condition number in the 14–200 range. A condition number > 10,000 after normalization indicates a degenerate solve (insufficient point spread, bad outlier rejection, or normalization failure).
+
+Right-column points R108/R175/R243: R175 and R243 are valid inliers. R108 projects to approximately (510, 520) at 720p — within 7px of F345 at (513.6, 514.6) — providing no independent geometric constraint. Exclude R108 from probes.
+
+**Perspective foreshortening (empirically measured from 7-point inlier set):**
+
+The H2D camera is mounted obliquely at the back-right. This produces severe non-uniform scaling across the bed:
+
+| Region | World axis | Pixel density | Implication |
+|--------|-----------|--------------|-------------|
+| Back row (Y=315) | X: B005→B260 (255mm → 271px) | **1.06 px/mm** | Most reliable — dense pixel coverage |
+| Right column | Y: F345→R243 (203mm → 146px vertical) | 0.72 px/mm vertical | Good in Y; nearly vertical line in pixel space |
+| Right column | X: F345→R175 (all X=345) | ~0.09 px/mm horizontal | Right edge collapses to near-vertical strip ≈28px wide |
+| Mid-bed (Y=243) | X direction (from H) | **0.39 px/mm** | 2.7× more compressed than back row |
+| Mid-bed (Y=175) | X direction (from H) | **0.24 px/mm** | 4.4× more compressed than back row |
+
+**Right-column geometry:** At X=345, moving from F345 (front) to R243 to R175 (mid), the nozzle pixel position shifts mostly in Y (146px) while X barely changes (≈28px total across Y=40→243). The right edge appears as a nearly-vertical line in pixel space. This is why R108 provides no constraint — it's indistinguishable from F345 in pixel space despite being 68mm away in world Y.
+
+**Search radius world-space equivalent:** The `search_radius=200px` crop means different physical areas at different bed locations:
+- Back row (Y=315): 200px ÷ 1.06px/mm ≈ **189mm radius** — covers most of the bed width
+- Mid-bed (Y=175): 200px ÷ 0.24px/mm ≈ **833mm radius** — larger than the bed itself
+
+This is expected and correct — the large world-space radius at the front/mid means even a coarse expected-pixel estimate will contain the nozzle in the crop. Detection fails not from crop miss but from the nozzle being occluded or indistinguishable from background artifacts.
+
+**Inverse H (pixel→world):** The calibration H maps world(mm)→pixel. To convert a detected pixel position back to bed world coordinates (used in spaghetti detection to locate an anomaly on the bed):
+
+```python
+H_inv = np.linalg.inv(H)
+def pixel_to_world(px, py, H_inv):
+    """Convert 720p pixel (px,py) to bed world mm (wx,wy)."""
+    v = H_inv @ np.array([px, py, 1.0])
+    return v[0]/v[2], v[1]/v[2]
+```
+
+The inverse is well-conditioned (condition number matches H itself, ~100). Any detected anomaly pixel can be projected back to a bed position accurate to ±6mm (matching the mean reproj error).
 
 **H calibration resolution (critical):** The DLT H in H2D.json was fitted directly to **720p (1280×720)** captured frames. Projected pixel coordinates from `H @ [wx, wy, 1]` are in 720p pixel space. Do NOT rescale from 1920×1080 — the H has no knowledge of 1920×1080. If the capture resolution differs from 720p, scale the H output by `(frame_w/1280, frame_h/720)`.
 
@@ -1451,21 +1485,73 @@ The corner calibration approach uses visual image differencing to locate the noz
 4. Detection cascade (4 techniques on same frame pair) selects the best result
 
 **Detection cascade (in priority order):**
-1. `centroid` — centroid of all pixels above threshold in the local crop
-2. `top_pct` — centroid of top 5% brightest pixels; cuts toolhead body blob at left column
-3. `weighted` — intensity-weighted centroid; pulls toward the bright nozzle tip
-4. `sparse_bright` — centroid of top-N isolated bright pixels; resists large uniform blobs
+1. `centroid` — centroid of all pixels above adaptive threshold (15→25→40) in local crop
+2. `top_pct` — centroid of top 5% brightest pixels; cuts toolhead body blob contamination (L243 had 16K diff pixels from body shadow; top_pct isolates nozzle tip)
+3. `weighted` — intensity-weighted centroid; pulls toward bright nozzle tip when diff blob is diffuse
+4. `sparse_bright` — centroid of top-N pixels in inner ½ of crop at 85th-percentile threshold; eliminates border noise, finds sharpest cluster
 
-Each technique reports a confidence score. The cascade selects the technique with the highest confidence. If all four yield conf < 0.3 after a rescue probe at Z_RESCUE=1.0mm, the point is marked as failed (not retried).
+Each technique operates on the **same pre-computed local diff crop** — no additional GCode required. `_crop_and_diff()` crops `search_radius=100px` around the expected pixel; falls back to full-frame if crop would go near frame edge.
 
-**Rescue probe:** When the primary Z_CAPTURE probe yields conf < 0.3, re-probe at Z_RESCUE=1.0mm (closer to bed surface) for a stronger diff signal. The rescue probe uses the same 4-technique cascade on the new frame pair.
+**Confidence scoring:** `confidence = min(1.0, signal_strength * fill_ratio * 50)`, then penalized:
+- If detected centroid offset from expected > `search_radius` → `confidence *= 0.5`
+- If full-frame fallback was used (crop dimension < 20px in either axis) → hard-cap at `0.500`
+
+**Cascade constants:**
+- `CONF_ACCEPT = 0.7` — cascade exits early at this threshold; result is accepted
+- `CONF_RESCUE = 0.4` — threshold below which rescue probe fires
+- `CONF_HEAT = 0.30` — threshold below which heat_halo last-resort technique fires
+
+The cascade selects the technique with the highest confidence. If all four techniques stay below `CONF_RESCUE=0.4` after up to 3 probes, the rescue probe fires. If the rescue probe also stays below `CONF_RESCUE`, the heat_halo technique fires as a last resort. If heat_halo also fails, the point is marked as failed and excluded from the DLT solve.
+
+**Rescue probe:** When best conf < `CONF_RESCUE` after standard probes, re-capture reference at Z_CLEARANCE then descend to Z_RESCUE=1.0mm. Extra descent ≈ 2× stronger diff signal (more angular nozzle movement visible in camera). Uses same 4-technique cascade on the new frame pair.
+
+**heat_halo technique (5th, last resort — Z-independent):** Fires when standard probes + rescue all stay below `CONF_HEAT`. Instead of Z-movement diff, uses **nozzle temperature diff** — completely independent of Z. The thermal glow from a hot nozzle is detectable in the RGB camera even at moderate temperatures.
+
+Protocol:
+1. Set T0=T_HEAT(180°C), T1=38°C → wait `HEAT_WAIT=45s` → capture T0-hot frame
+2. Diff T0-hot vs cold-ref (captured at Z_CLEARANCE, no Z movement) → detect T0 centroid
+3. Set T0=38°C, T1=T_HEAT(180°C) → wait → capture T1-hot frame → detect T1 centroid
+4. Cool both nozzles back to 38°C
+5. Records BOTH T0 and T1 pixel positions → directly enables per-nozzle offset calibration
+
+Constants: `T_HEAT=180`, `HEAT_WAIT=45`, `CONF_HEAT=0.30`. Reuses hotspot centroid logic from `h2d_heatmap.py`.
 
 **Hard requirements:**
-- **Always use a tight local crop** around the expected pixel position (search_radius ≈ 200px). Full-frame diff is unreliable: when Z changes, the entire bed image shifts slightly, producing ~100K changed pixels across the whole frame. The centroid of a full-frame diff is approximately the center of the frame — not the nozzle.
-- When expected pixel is outside the actual frame (scaling mistake), the local crop collapses to zero size. Guard against this: if crop dimension < 20px in either axis, fall back to full-frame diff AND cap confidence at 0.5 as a signal that the result is unreliable.
-- **Probe each point multiple times (up to 3) and take the highest-confidence result.** The diff signal varies frame-to-frame; re-probing costs 1 extra Z-cycle and substantially improves reliability.
+- **Always use search_radius=100px crop** around expected pixel. Full-frame diff is unreliable: Z changes cause ~100K changed pixels across the entire frame; full-frame centroid ≈ center of frame, not the nozzle.
+- When crop dimension < 20px in either axis (expected pixel near frame edge), fall back to full-frame diff AND hard-cap confidence at 0.500 — this is a signal the expected pixel estimate is bad, not a detection failure.
 
-**DLT homography requirements:**
+**Camera light and firmware idle timeout (both mandatory for calibration runs):**
+- **Light OFF is definitively better for hotspot detection.** R-B median 72 with light off vs 37 with light on. After any light state change, wait ≥6s before capturing; discard the first snapshot (camera AGC needs time to adjust).
+- **Firmware idle nozzle timeout:** If the nozzle is held at a target temperature but no print is active, firmware silently resets the nozzle target back to 38°C after ~170s idle. During calibration runs requiring a hot nozzle, defeat this by sending `M104 T0 S{target}` + `M104 T1 S{target}` re-assert commands every 5s in the temperature poll loop.
+
+**Back-row collinearity property:** Any set of world points at the same Y value (e.g., the entire back row Y=315) must project to a straight line in pixel space — this is a hard mathematical property of homographies. If back-row detections are NOT collinear in pixel space, at least one detection is wrong (bad centroid, shadow artifact, or body blob contamination). Use this as a validity check: fit a line through back-row pixel detections and flag any point more than ~10px from the line as suspect before including it in the DLT solve.
+
+**H2D.json full schema:**
+```json
+{
+  "printer": "H2D",
+  "bed_dimensions_mm": [350, 320],
+  "z_clearance_mm": 10.0,
+  "z_capture_mm": 2.0,
+  "corners": {
+    "B005": {"world_xy": [5, 315], "pixel_xy": [96.9, 282.8], "confidence": 1.0, "expected_pixel": [...]},
+    "...": "..."
+  },
+  "dlt": {
+    "H": [[...], [...], [...]],
+    "reprojection_error_px": 5.79,
+    "n_points": 7,
+    "inlier_points": ["B005","B090","B175","B260","F345","R175","R243"],
+    "method": "hartley_normalized_dlt",
+    "note": "..."
+  },
+  "per_point_errors": {"B005": 4.0, "B090": 6.8, "...": "..."}
+}
+```
+
+**World coordinate system:** X=5 (left edge) to X=345 (right edge); Y=40 (front, inset from physical edge) to Y=315 (back). These are nozzle XY coordinates in the Bambu H2D CoreXY motion system. The bed moves in Z only — the nozzle never changes Z when moving XY. Z_CLEARANCE and Z_CAPTURE are absolute Z heights, not relative moves.
+
+**Probes-per-point:** Reference frame is captured once per point at Z_CLEARANCE. Each probe descends to Z_CAPTURE, captures, ascends. All probes at the same point share the same reference frame — valid because the nozzle re-enters the same pixel position each descent. Early exit at conf ≥ CONF_ACCEPT to avoid unnecessary probes.
 
 - **Hartley normalization is mandatory.** Raw DLT condition numbers reach 7,000,000+ on H2D pixel coordinates (back row spans ~500px; front row spans ~60px). Hartley normalization reduces condition number to ~14 (from millions), making the SVD numerically stable. Any DLT solve without normalization will produce a degenerate H with 200-250px mean reprojection error.
 - **RANSAC outlier rejection is mandatory for any solve with N>5 points.** Individual false detections (shadow artifacts, wrong feature) cannot be distinguished visually from correct detections. RANSAC with a 15px inlier threshold and minimum 4-point hypotheses correctly identifies outliers. The 7-point inlier set is the result of this process.
