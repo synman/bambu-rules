@@ -1093,6 +1093,24 @@ Any event that changes what is known about the system is incomplete until the ar
 
 **This rule is self-applying:** The absence of a rule requiring audit findings to produce rules files was itself identified as a gap in an audit — closing that gap produced the original Post-Audit Rules Update Obligation. That rule is now row 1 of this table. The behavior change that added row 2 required this documentation update to be complete — the rule applied to its own addition.
 
+## Turn-End Rules Delta Closure (Mandatory)
+
+At the end of any turn in which any rules file was edited, the following must complete **before the response ends** — not deferred to a later turn:
+
+1. **Commit** the edited rules file in its home repo, governed by that repo's commit policy:
+   - Repos with a commit grant (e.g. `bambu-mcp`): commit immediately.
+   - Repos under the BPM Write Scope Lock (`bambu-printer-manager`): stage only; do not commit.
+   - Global rules file (`~/.copilot/copilot-instructions.md`): no git home — skip this step; sync to bambu-rules covers it.
+2. **Sync** the edited file to `bambu-rules` (copy → `git add -A` → `git commit` → `git push`).
+
+**Hard requirements:**
+- This fires whether the rules edit was the primary task of the turn or incidental to other work (e.g. a rules note added while implementing a feature).
+- "I'll sync it later" is a violation. The existing line in the bambu-rules sync section ("Do not defer sync to 'later'") is the statement of obligation; this section is the enforcement gate.
+- The commit message for the rules file must describe the content added, not just say "sync" — future audits read commit messages to understand what changed and when.
+- If both code and rules files changed in the same turn: commit code and rules together if they are in the same repo with a commit grant; sync bambu-rules after both commits land.
+
+**The specific failure mode this prevents:** Agent writes a rules section during a work turn → continues with other work → turn ends without committing or syncing → next session starts without those rules → the same mistake recurs → user has to explicitly ask again.
+
 ## Multi-Step Sequence Completion (Mandatory)
 
 When completing a step that is part of a known multi-step sequence (pre-baseline audit, gap resolution, coverage work, PR merge checklist), **the turn is not done until the sequence advances as far as it can go without requiring user input.**
