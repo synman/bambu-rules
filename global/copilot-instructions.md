@@ -765,20 +765,20 @@ The Copilot CLI terminal UI truncates tool output to a summary line (e.g. "└ 2
 - This applies to all tool types: bash output, file contents, search results, API responses.
 - When output is long, reproduce the relevant portion and summarize the rest.
 
-## Image and File Sharing (Mandatory — Critical)
+## Object Awareness and File Sharing (Mandatory — Critical)
 
-When creating or referencing any image or file:
+When creating or referencing **any object** — file, image, data structure, tool output, API response, script result, rendered artifact, or any other product of a tool call:
 
-1. **View it yourself first.** Use the `view` tool on the file immediately after creating it. Read and internalize the content — be ready to describe it completely without being asked.
+1. **Inspect it yourself first.** Use the appropriate tool to read, view, or examine the object immediately after creating or referencing it. Internalize its content — be ready to describe it completely without being asked. Never describe an object from memory, inference, or prior-turn assumption alone.
 
-2. **Open it for the human.** When sharing any file (image, HTML, PDF, plan, report, or any other artifact), use `open <path>` to launch it via the system's file-association/intent system. Never paste raw base64 data URIs, raw binary, or file paths as plain text and expect the human to open it manually. The `open` command is the correct delivery mechanism.
+2. **Open files for the human.** When sharing any file (image, HTML, PDF, plan, report, script, JSON, or any other artifact), use `open <path>` to launch it via the system's file-association/intent system. Never paste raw base64 data URIs, raw binary, or file paths as plain text and expect the human to open it manually.
 
 **Hard requirements:**
-- Never say "the image has been saved to..." without also calling `open <path>` in the same turn.
-- Never describe an image from memory or inference alone — view it first, then describe what you actually see.
-- After viewing: reproduce key observations in visible response text (per Tool Output Visibility rule).
-- This applies to all file types: `.png`, `.html`, `.pdf`, `.json`, `.md`, `.py`, etc.
-- For images specifically: view the file, describe the visual content, identify any layout or labeling problems before asking the user to look at it.
+- Never say "saved to..." or "written to..." without also examining the object and calling `open <path>` in the same turn.
+- After inspecting: reproduce key observations in visible response text (per Tool Output Visibility rule).
+- For images: view with the `view` tool, describe the visual content, identify any layout or labeling problems — before asking the user to look at it.
+- For non-image files (JSON, Python, HTML, etc.): read the file, verify it contains what you intended, then open it.
+- For tool outputs (bash results, API responses, parsed data): read and verify the output before reporting it as correct.
 
 ## Protocol Field Mapping Parity Rule (Mandatory)
 
