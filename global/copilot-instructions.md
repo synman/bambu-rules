@@ -765,6 +765,21 @@ The Copilot CLI terminal UI truncates tool output to a summary line (e.g. "└ 2
 - This applies to all tool types: bash output, file contents, search results, API responses.
 - When output is long, reproduce the relevant portion and summarize the rest.
 
+## Image and File Sharing (Mandatory — Critical)
+
+When creating or referencing any image or file:
+
+1. **View it yourself first.** Use the `view` tool on the file immediately after creating it. Read and internalize the content — be ready to describe it completely without being asked.
+
+2. **Open it for the human.** When sharing any file (image, HTML, PDF, plan, report, or any other artifact), use `open <path>` to launch it via the system's file-association/intent system. Never paste raw base64 data URIs, raw binary, or file paths as plain text and expect the human to open it manually. The `open` command is the correct delivery mechanism.
+
+**Hard requirements:**
+- Never say "the image has been saved to..." without also calling `open <path>` in the same turn.
+- Never describe an image from memory or inference alone — view it first, then describe what you actually see.
+- After viewing: reproduce key observations in visible response text (per Tool Output Visibility rule).
+- This applies to all file types: `.png`, `.html`, `.pdf`, `.json`, `.md`, `.py`, etc.
+- For images specifically: view the file, describe the visual content, identify any layout or labeling problems before asking the user to look at it.
+
 ## Protocol Field Mapping Parity Rule (Mandatory)
 
 *This section is the Scientific Method Standard applied to protocol field analysis: evidence requirements (1–4) = experiment design; parity checklist = falsification test.*
