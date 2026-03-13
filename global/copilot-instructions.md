@@ -414,19 +414,24 @@ Prohibited operations (not exhaustive):
 
 This rule applies in **all operating modes** without exception: interactive, autopilot, background agents, scripted execution. Violating this rule has already caused accidental firmware flash attempts on a physical printer twice. There will be no third time.
 
-## ⚠️ CONTAINER API AUTH — MANDATORY, NO EXCEPTIONS, EVERY CALL
+## Live Printer State Access (Mandatory)
 
-**Any request for live printer state — direct ("query the printer") or indirect ("what is the printer doing?", "tell me everything about the H2D") — requires a call to the container API. That call MUST retrieve credentials from `~/.bpm_secrets` via `secrets.py`. No other auth source is permitted.**
+**For any query about live printer state, use the correct access path for the context:**
+
+1. **MCP tools — always preferred** when MCP tools are available. `bambu-mcp-get_temperatures`, `bambu-mcp-get_print_progress`, `bambu-mcp-get_printer_state`, etc. No HTTP call needed.
+2. **Local bambu-mcp REST API — for bash/Python scripts** that cannot call MCP tools directly. Use `http://localhost:49152/api/...` (probe ports 49152–49158 until one responds). No authentication required.
 
 ```bash
-AUTH=$(python ~/bambu-printer-manager/secrets.py get bpm_api_auth)
-# bpm_api_auth is already base64-encoded user:password — use as Authorization header directly
-curl -sk -H "Authorization: Basic $AUTH" "https://bambu-h2d.shellware.com/api/printer"
+# Correct pattern for bash scripts querying printer state
+for port in 49152 49153 49154 49155; do
+    data=$(curl -s --max-time 3 "http://localhost:${port}/api/printer?printer=H2D" 2>/dev/null) && break
+done
 ```
 
-- **Never use `security find-internet-password`** — macOS Keychain is not the store for these credentials.
-- **Never hard-code, inline, or construct the credentials manually** — always retrieve via `secrets.py get bpm_api_auth`.
-- This applies every single time, in every script, snippet, and ad-hoc command, without exception.
+**Hard requirements:**
+- **Do not generate curl commands to `https://bambu-h2d.shellware.com`** — that is the bpa container API, which is not available in the bambu-mcp context and is not accessible to this agent.
+- Never fabricate, hardcode, or infer credentials. The local REST API requires no auth.
+- If neither MCP tools nor the local REST API responds, the printer session is not active — report that, do not attempt fallback HTTP endpoints.
 
 ---
 
@@ -530,7 +535,7 @@ For each duplicate heading found: classify it before acting. Three valid states,
 
 **Known intentional safety-emphasis duplicates (exempt from drift enforcement):**
 - `⚠️ PRINTER WRITE PROTECTION` in bpa, bpm, bfw — printer crash history makes verbatim redundancy a deliberate choice
-- `⚠️ CONTAINER API AUTH` in bpa, bpm — auth failure has real consequences; brief reminder at project level is intentional
+- `⚠️ CONTAINER API AUTH` in bpa, bpm — bpa owns the container API; these are project-specific rules, not duplicates of any global section (global section replaced with "Live Printer State Access")
 
 **Layer ownership rules (for content classification):**
 - Raw MQTT protocol fields, payload formats, topic names → **bpm rules** (bpm owns MQTT parsing)
