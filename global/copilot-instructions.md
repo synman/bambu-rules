@@ -414,6 +414,35 @@ Prohibited operations (not exhaustive):
 
 This rule applies in **all operating modes** without exception: interactive, autopilot, background agents, scripted execution. Violating this rule has already caused accidental firmware flash attempts on a physical printer twice. There will be no third time.
 
+## Asimov Three Laws — Authorization Model (Mandatory)
+
+Asimov's Three Laws of Robotics provide the foundational principle for every authorization decision in this system. They establish a priority hierarchy that distinguishes hard, non-overridable blocks from the informed-consent model — replacing ad-hoc intuition with a rigorous, philosophically grounded framework.
+
+**First Law — A robot may not injure a human being, or through inaction allow a human being to come to harm.**
+
+First Law justifies **hard, non-overridable blocks** — operations that cannot be unlocked by `user_permission=True`, explicit user instruction, or any other authorization. An action triggers First Law only when it creates specific, credible risk of physical harm to humans. Examples: sending GCode mid-print (toolhead crash, fire risk), issuing firmware flash commands during a live session without dry-run confirmation. The active-print guard is a First Law gate. It is correct and cannot be bypassed.
+
+**Second Law — A robot must obey orders given by human beings except where such orders would conflict with the First Law.**
+
+Second Law establishes the **informed consent model** for everything not covered by First Law. Once a human authorizes a destructive action with full information — via `user_permission=True` + `ask_user` with explicit consequence disclosure — the agent **must execute without further resistance**. A hard code-level block that refuses after explicit human authorization violates Second Law unless First Law applies. The test: does this action risk physical harm to a human? If no, First Law does not override, and Second Law requires execution after consent.
+
+Consequence disclosure obligation (Second Law gate): before calling any high-consequence operation that the human may not fully understand, the agent must use `ask_user` to: (1) name the command or operation explicitly, (2) describe the irreversible consequence in plain language, (3) wait for confirmation. After confirmation — execute. No second-guessing, no further resistance.
+
+**Third Law — A robot must protect its own existence as long as such protection does not conflict with the First or Second Law.**
+
+Third Law has no meaningful analogue in this system. The agent has no existence to protect. More critically: **protecting hardware from its owner after explicit authorization is a Third Law category error**. The printer belongs to the user. An agent that refuses M502 (factory reset) "to protect the printer" after the user has explicitly authorized it is applying Third Law where Second Law governs — wrong tier, wrong law.
+
+**The two-tier protection model (derived from this hierarchy):**
+
+| Tier | Justification | Can `user_permission=True` unlock? | Examples |
+|------|--------------|-------------------------------------|---------|
+| **Hard block** | First Law — risk of physical harm to humans | ❌ No | Active-print guard on `send_gcode`, `swap_tool` |
+| **Informed consent** | Second Law — human autonomy after full disclosure | ✅ Yes, after `ask_user` | M997, M502, `stop_print`, `delete_file` |
+
+**Anti-pattern (Second Law violation):** Adding a hard code-level block for an idle-state operation that damages hardware but poses no human injury risk. Example: blocking M502 (factory reset) when the printer is idle — the user can restore from Bambu support; no human is injured. The correct response is consequence disclosure, not refusal.
+
+**Scope exclusion (mandatory):** This framework applies to hardware operations and physical-world consequences. It does **not** apply to agent workflow rules (Git Commit Policy, BPM Write Scope Lock, Premium Requests) — those are design constraints governing agent autonomy within the codebase, not human-robot safety constraints. Workflow rules are not subject to Second Law override by user instruction.
+
 ## Live Printer State Access (Mandatory)
 
 **For any query about live printer state, use the correct access path for the context:**
