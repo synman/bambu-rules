@@ -1482,8 +1482,8 @@ This section governs how the Copilot agent receives asynchronous whispers from t
 | `instance_id` | `copilot-<workspace-key>` | Stable DB key — one row per workspace, PID updated on each session start |
 | whisper dir | `~/.claude/.whispers/copilot-<workspace-key>/` | Stable across session resumes |
 
-**Identity resolution (MCP-First + Vault-First — mandatory, no hardcoding):**
-- **Hostname**: `federation_status` → top-level `instance_id` field. Vault-authoritative (`pref-instance-id`); `federation_status` reads it fork-free via MCP.
+**Identity resolution (MCP-First — mandatory, no hardcoding):**
+- **Hostname**: `federation_status` → top-level `instance_id` field. (`pref-instance-id` is the vault-authoritative source; `federation_status` surfaces it through MCP — vault access is an MCP operation.)
 - **Workspace key**: `query_database("SELECT key FROM repos WHERE tier='workspace' LIMIT 1")` → prefix with `copilot-` to form SID and `reply_to`.
 
 Never hardcode either value. If MCP tools are unavailable, the watcher command derives SID dynamically at bash runtime via the `.workspace-paths` walk-up already embedded in the watcher command.
